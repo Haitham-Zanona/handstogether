@@ -25,6 +25,12 @@ class Group extends Model
     // Get total students count
     public function getTotalStudentsAttribute()
     {
+        // Use the pre-loaded students_count from withCount() if available
+        if (array_key_exists('students_count', $this->attributes)) {
+            return $this->attributes['students_count'];
+        }
+
+        // Fallback to counting if students_count is not pre-loaded
         return $this->students()->count();
     }
 

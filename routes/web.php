@@ -5,8 +5,10 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ParentController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TeacherController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 // في routes/web.php
@@ -20,16 +22,58 @@ Route::prefix('portal')->group(function () {
     Route::get('/student', [AuthController::class, 'studentLogin'])->name('portal.student');
 });
 
+// Custom authentication route
+Route::post('/login', [AuthController::class, 'authenticate'])->name('login');
+
 // Protected routes with role middleware
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Profile routes (accessible to all authenticated users)
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // General dashboard route that redirects based on user role
+    Route::get('/dashboard', function () {
+        $user = Auth::user();
+        switch ($user->role) {
+            case 'admin':
+                return redirect()->route('admin.dashboard');
+            case 'teacher':
+                return redirect()->route('teacher.dashboard');
+            case 'parent':
+                return redirect()->route('parent.dashboard');
+            case 'student':
+                return redirect()->route('student.dashboard');
+            default:
+                return redirect()->route('home');
+        }
+    })->name('dashboard');
+
     // Admin routes
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/admissions', [AdminController::class, 'admissions'])->name('admissions');
+        Route::post('/admissions/{admission}/approve', [AdminController::class, 'approveAdmission'])->name('admissions.approve');
+        Route::post('/admissions/{admission}/reject', [AdminController::class, 'rejectAdmission'])->name('admissions.reject');
         Route::get('/groups', [AdminController::class, 'groups'])->name('groups');
+        Route::post('/groups', [AdminController::class, 'storeGroup'])->name('groups.store');
+        Route::put('/groups/{group}', [AdminController::class, 'updateGroup'])->name('groups.update');
+        Route::delete('/groups/{group}', [AdminController::class, 'destroyGroup'])->name('groups.destroy');
         Route::get('/attendance', [AdminController::class, 'attendance'])->name('attendance');
         Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
+        Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
+        Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+        Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+        Route::post('/settings/clear-data', [AdminController::class, 'clearData'])->name('settings.clear-data');
+        Route::post('/settings/reset-system', [AdminController::class, 'resetSystem'])->name('settings.reset-system');
     });
+
+    Route::get('contact', function () {
+        return view('public.contact');
+    })->name('contact');
+    Route::post('contact', [HomeController::class, 'sendContact'])->name('contact.send');
+    Route::get('about', function () {
+        return view('public.about');
+    })->name('about');
 
     // Teacher routes
     Route::middleware('role:teacher')->prefix('teacher')->name('teacher.')->group(function () {

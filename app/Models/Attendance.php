@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Attendance extends Model
 {
+    protected $table = 'attendance';
+
     protected $fillable = ['student_id', 'lecture_id', 'status'];
 
     public function student()

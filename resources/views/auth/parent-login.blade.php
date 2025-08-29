@@ -1,82 +1,30 @@
-{{-- <x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
-
-    <form method="POST" action="{{ route('login') }}">
-        @csrf
-
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block w-full mt-1" type="email" name="email" :value="old('email')" required
-                autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
-
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block w-full mt-1" type="password" name="password" required
-                autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox"
-                    class="text-indigo-600 border-gray-300 rounded shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="text-sm text-gray-600 ms-2">{{ __('Remember me') }}</span>
-            </label>
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-            <a class="text-sm text-gray-600 underline rounded-md hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                href="{{ route('password.request') }}">
-                {{ __('Forgot your password?') }}
-            </a>
-            @endif
-
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout> --}}
-
-
-
-
 @extends('layouts.public')
 
 @section('content')
 <div class="flex items-center justify-center min-h-screen px-4 py-12 bg-gray-50 sm:px-6 lg:px-8">
     <div class="w-full max-w-md space-y-8">
         <div class="text-center">
-            <div class="inline-block px-4 py-2 mb-4 text-2xl font-bold text-white rounded bg-primary">
+            <div class="inline-block px-4 py-2 mb-4 text-2xl font-bold text-white bg-green-600 rounded">
                 الأكاديمية التعليمية
             </div>
             <h2 class="text-3xl font-bold text-gray-900">
-                {{ $title ?? 'تسجيل الدخول' }}
+                بوابة أولياء الأمور
             </h2>
             <p class="mt-2 text-sm text-gray-600">
-                يرجى إدخال بياناتك للدخول إلى النظام
+                يرجى إدخال بياناتك لمتابعة أداء أبنائك الطلبة
             </p>
         </div>
 
         <form class="mt-8 space-y-6" action="{{ route('login') }}" method="POST">
             @csrf
-            <input type="hidden" name="role" value="{{ $role ?? 'student' }}">
+            <input type="hidden" name="role" value="parent">
 
             <div class="space-y-4">
                 <!-- Email -->
                 <div>
                     <label for="email" class="block mb-2 text-sm font-medium text-gray-700">البريد الإلكتروني</label>
                     <input id="email" name="email" type="email" required
-                        class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm @error('email') border-red-500 @enderror"
+                        class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm @error('email') border-red-500 @enderror"
                         placeholder="أدخل بريدك الإلكتروني" value="{{ old('email') }}">
                     @error('email')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -87,7 +35,7 @@
                 <div>
                     <label for="password" class="block mb-2 text-sm font-medium text-gray-700">كلمة المرور</label>
                     <input id="password" name="password" type="password" required
-                        class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm @error('password') border-red-500 @enderror"
+                        class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm @error('password') border-red-500 @enderror"
                         placeholder="أدخل كلمة المرور">
                     @error('password')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -99,14 +47,14 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center">
                     <input id="remember_me" name="remember" type="checkbox"
-                        class="w-4 h-4 border-gray-300 rounded text-primary focus:ring-primary">
+                        class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
                     <label for="remember_me" class="block mr-2 text-sm text-gray-900">
                         تذكرني
                     </label>
                 </div>
 
                 <div class="text-sm">
-                    <a href="#" class="font-medium text-primary hover:text-blue-500">
+                    <a href="#" class="font-medium text-green-600 hover:text-green-500">
                         نسيت كلمة المرور؟
                     </a>
                 </div>
@@ -115,9 +63,9 @@
             <!-- Submit Button -->
             <div>
                 <button type="submit"
-                    class="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white transition duration-300 border border-transparent rounded-md group bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    class="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white transition duration-300 bg-green-600 border border-transparent rounded-md group hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                     <span class="absolute inset-y-0 right-0 flex items-center pl-3">
-                        <svg class="w-5 h-5 text-blue-300 group-hover:text-blue-400" fill="none" stroke="currentColor"
+                        <svg class="w-5 h-5 text-green-300 group-hover:text-green-400" fill="none" stroke="currentColor"
                             stroke-width="2">
                             <path
                                 d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v-2L3.257 9.257A6 6 0 0111 3h4a6 6 0 012 2v2z" />
@@ -138,37 +86,25 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 mt-6">
-                    @if($role !== 'admin')
+                <div class="grid grid-cols-3 gap-3 mt-6">
                     <a href="{{ route('portal.admin') }}"
                         class="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
                         الإداريين
                     </a>
-                    @endif
-                    @if($role !== 'teacher')
                     <a href="{{ route('portal.teacher') }}"
                         class="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
                         المدرسين
                     </a>
-                    @endif
-                    @if($role !== 'parent')
-                    <a href="{{ route('portal.parent') }}"
-                        class="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
-                        أولياء الأمور
-                    </a>
-                    @endif
-                    @if($role !== 'student')
                     <a href="{{ route('portal.student') }}"
                         class="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
                         الطلبة
                     </a>
-                    @endif
                 </div>
             </div>
 
             <!-- Back to Home -->
             <div class="text-center">
-                <a href="{{ route('home') }}" class="text-sm text-gray-600 hover:text-primary">
+                <a href="{{ route('home') }}" class="text-sm text-gray-600 hover:text-green-600">
                     ← العودة إلى الصفحة الرئيسية
                 </a>
             </div>
