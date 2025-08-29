@@ -18,7 +18,7 @@ $pageDescription = 'إدارة المجموعات';
     </div>
 
     <div class="row">
-        <div class="mb-4 col-md-4">
+        {{-- <div class="mb-4 col-md-4">
             <div class="shadow card">
                 <div class="py-3 card-header">
                     <h6 class="m-0 font-weight-bold text-primary">إضافة مجموعة جديدة</h6>
@@ -26,23 +26,126 @@ $pageDescription = 'إدارة المجموعات';
                 <div class="card-body">
                     <form action="{{ route('admin.groups.store') }}" method="POST">
                         @csrf
-                        <div class="form-group">
-                            <label for="name">اسم المجموعة</label>
+                        <div class="inline-block form-group">
+                            <label for="name" class="block mb-2">اسم المجموعة:</label>
                             <input type="text" class="form-control @error('name') is-invalid @enderror" id="name"
                                 name="name" value="{{ old('name') }}" required>
                             @error('name')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="form-group">
-                            <label for="description">وصف المجموعة</label>
+                        <div class="inline-block form-group ">
+                            <label for="description" class="block mb-2">وصف المجموعة</label>
                             <textarea class="form-control @error('description') is-invalid @enderror" id="description"
                                 name="description" rows="3">{{ old('description') }}</textarea>
                             @error('description')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <button type="submit" class="btn btn-primary">إضافة المجموعة</button>
+                        <button type="submit"
+                            class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 ease-in-out">
+                            إضافة المجموعة
+                        </button>
+                    </form>
+                </div>
+                <div class="max-w-lg p-6 mx-auto bg-white border border-gray-200 shadow-lg rounded-xl" dir="rtl">
+                    <form action="{{ route('admin.groups.store') }}" method="POST" class="space-y-5">
+                        @csrf
+
+                        <!-- اسم المجموعة -->
+                        <div class="form-group">
+                            <label for="name" class="block mb-2 text-sm font-medium text-gray-700">
+                                اسم المجموعة:
+                            </label>
+                            <input type="text" id="name" name="name"
+                                class="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2 text-gray-700 placeholder-gray-400 shadow-sm transition-all duration-200 @error('name') border-red-500 @enderror"
+                                value="{{ old('name') }}" required>
+
+                            @error('name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- وصف المجموعة -->
+                        <div class="form-group">
+                            <label for="description" class="block mb-2 text-sm font-medium text-gray-700">
+                                وصف المجموعة:
+                            </label>
+                            <textarea id="description" name="description" rows="3"
+                                class="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2 text-gray-700 placeholder-gray-400 shadow-sm transition-all duration-200 @error('description') border-red-500 @enderror">{{ old('description') }}</textarea>
+
+                            @error('description')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- زر الإرسال -->
+                        <button type="submit"
+                            class="w-full md:w-auto px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 ease-in-out">
+                            إضافة المجموعة
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div> --}}
+
+        <div x-data="{ open: false }" class="mb-4 col-md-4">
+            <div class="shadow card">
+                <div class="flex items-center justify-between p-3 card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">إضافة مجموعة جديدة</h6>
+
+                    <!-- زر فتح/إغلاق -->
+                    <button @click="open = !open"
+                        class="px-4 py-2 text-sm font-medium text-white transition ease-in-out bg-blue-600 rounded-lg shadow-md duration-2000 hover:bg-blue-700 hover:shadow-lg">
+                        <span x-show="!open">+ إضافة مجموعة</span>
+                        <span x-show="open">إخفاء النموذج</span>
+                    </button>
+                </div>
+
+                <!-- الفورم -->
+                <div x-show="open" x-transition:enter="transition ease-out duration-500"
+                    x-transition:enter-start="opacity-0 -translate-y-5"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-400"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 -translate-y-5"
+                    class="max-w-lg p-6 mx-auto mt-3 bg-white border border-gray-200 shadow-lg rounded-xl" dir="rtl">
+
+                    <form action="{{ route('admin.groups.store') }}" method="POST" class="space-y-5">
+                        @csrf
+
+                        <!-- اسم المجموعة -->
+                        <div class="form-group">
+                            <label for="name" class="block mb-2 text-sm font-medium text-gray-700">
+                                اسم المجموعة:
+                            </label>
+                            <input type="text" id="name" name="name"
+                                class="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2 text-gray-700 placeholder-gray-400 shadow-sm transition-all duration-200 @error('name') border-red-500 @enderror"
+                                value="{{ old('name') }}" required>
+
+                            @error('name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- وصف المجموعة -->
+                        <div class="form-group">
+                            <label for="description" class="block mb-2 text-sm font-medium text-gray-700">
+                                وصف المجموعة:
+                            </label>
+                            <textarea id="description" name="description" rows="3"
+                                class="w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2 text-gray-700 placeholder-gray-400 shadow-sm transition-all duration-200 @error('description') border-red-500 @enderror">{{ old('description') }}</textarea>
+
+                            @error('description')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- زر الإرسال -->
+                        <button type="submit"
+                            class="w-full md:w-auto px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 ease-in-out">
+                            إضافة المجموعة
+                        </button>
                     </form>
                 </div>
             </div>

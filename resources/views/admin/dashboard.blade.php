@@ -68,7 +68,7 @@ $pageDescription = 'نظرة عامة على أداء الأكاديمية وا�
 <!-- Statistics Cards -->
 <div class="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
     <!-- Students Count -->
-    <div class="p-6 text-white rounded-lg shadow-lg bg-gradient-to-r from-primary to-blue-700">
+    <div class="p-6 text-white rounded-lg shadow-lg bg-gradient-to-r from-blue-500 to-blue-700">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-blue-100">إجمالي الطلاب</p>
@@ -102,7 +102,7 @@ $pageDescription = 'نظرة عامة على أداء الأكاديمية وا�
     </div>
 
     <!-- Groups Count -->
-    <div class="p-6 text-white rounded-lg shadow-lg bg-gradient-to-r from-secondary to-orange-700">
+    <div class="p-6 text-white rounded-lg shadow-lg bg-gradient-to-r from-orange-500 to-orange-700">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm text-orange-100">عدد المجموعات</p>
