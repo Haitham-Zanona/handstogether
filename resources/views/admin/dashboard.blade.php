@@ -12,8 +12,8 @@
     </a>
 </li>
 <li>
-    <a href="{{ route('admin.admissions') }}"
-        class="flex items-center px-6 py-3 text-white hover:bg-secondary rounded-r-lg mx-2 {{ request()->routeIs('admin.admissions') ? 'bg-secondary' : '' }}">
+    <a href="{{ route('admin.admissions.index') }}"
+        class="flex items-center px-6 py-3 text-white hover:bg-secondary rounded-r-lg mx-2 {{ request()->routeIs('admin.admissions.index') ? 'bg-secondary' : '' }}">
         <svg class="w-5 h-5 ml-3" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
         </svg>
@@ -209,7 +209,7 @@ $pageDescription = 'نظرة عامة على أداء الأكاديمية وا�
 
 <!-- Quick Actions -->
 <div class="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
-    <a href="{{ route('admin.admissions') }}"
+    <a href="{{ route('admin.admissions.index') }}"
         class="block p-6 transition-shadow bg-white rounded-lg shadow hover:shadow-md">
         <div class="text-center">
             <div class="flex items-center justify-center w-12 h-12 mx-auto mb-3 text-white rounded-full bg-primary">

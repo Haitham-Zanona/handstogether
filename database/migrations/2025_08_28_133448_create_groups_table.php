@@ -10,8 +10,13 @@ return new class extends Migration
         Schema::create('groups', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('grade_level')->nullable();
+            $table->integer('students_count')->default(0);
+            $table->integer('max_capacity')->default(30);
+            $table->boolean('is_active')->default(true);
             $table->text('description')->nullable();
             $table->timestamps();
+
         });
     }
 

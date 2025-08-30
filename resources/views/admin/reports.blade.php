@@ -272,7 +272,7 @@ $pageDescription = 'تقارير شاملة عن أداء الأكاديمية �
         </div>
         <div class="p-6">
             <div class="space-y-3">
-                <a href="{{ route('admin.admissions') }}"
+                <a href="{{ route('admin.admissions.index') }}"
                     class="block w-full px-4 py-2 text-center text-white transition duration-300 rounded-lg bg-primary hover:bg-blue-700">
                     مراجعة طلبات الانتساب
                 </a>

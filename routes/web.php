@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\AdmissionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\NotificationController;
@@ -31,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
     // General dashboard route that redirects based on user role
     Route::get('/dashboard', function () {
         $user = Auth::user();
@@ -51,9 +53,50 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Admin routes
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-        Route::get('/admissions', [AdminController::class, 'admissions'])->name('admissions');
-        Route::post('/admissions/{admission}/approve', [AdminController::class, 'approveAdmission'])->name('admissions.approve');
-        Route::post('/admissions/{admission}/reject', [AdminController::class, 'rejectAdmission'])->name('admissions.reject');
+
+        // طلبات الانتساب - Routes الأساسية (Resource)
+        Route::resource('admissions', AdmissionController::class);
+
+        // طلبات الانتساب - Routes إضافية
+        Route::controller(AdmissionController::class)->prefix('admissions')->name('admissions.')->group(function () {
+            // موافقة ورفض الطلبات
+            Route::patch('{admission}/approve', 'approve')->name('approve');
+            Route::patch('{admission}/reject', 'reject')->name('reject');
+
+            // إعادة تعيين حالة الطلب (للمشرفين فقط)
+            Route::patch('{admission}/reset-status', 'resetStatus')
+                ->name('reset-status')
+                ->middleware('admission.permissions:reset_admission_status');
+
+            // تحويل الطلب إلى طالب
+            Route::post('{admission}/convert-to-student', 'convertToStudent')->name('convert-to-student');
+
+            // طباعة بيانات طلب معين
+            Route::get('{admission}/print', 'print')->name('print');
+
+            // إرسال رسالة SMS
+            Route::post('{admission}/send-sms', 'sendSMS')->name('send-sms');
+
+            // معالجة متعددة للطلبات
+            Route::post('bulk-action', 'bulkAction')->name('bulk-action');
+        });
+
+        // طلبات الانتساب - Routes للبيانات والإحصائيات
+        Route::prefix('admissions-data')->name('admissions.')->group(function () {
+            // إحصائيات طلبات الانتساب
+            Route::get('statistics', [AdmissionController::class, 'statistics'])->name('statistics');
+
+            // تصدير البيانات
+            Route::get('export', [AdmissionController::class, 'export'])->name('export');
+
+            // البحث السريع
+            Route::get('quick-search', [AdmissionController::class, 'quickSearch'])->name('quick-search');
+
+            // التحقق من توفر رقم الهوية
+            Route::post('check-id-availability', [AdmissionController::class, 'checkIdAvailability'])->name('check-id');
+        });
+
+        // Routes الأصلية الأخرى
         Route::get('/groups', [AdminController::class, 'groups'])->name('groups');
         Route::post('/groups', [AdminController::class, 'storeGroup'])->name('groups.store');
         Route::put('/groups/{group}', [AdminController::class, 'updateGroup'])->name('groups.update');
@@ -67,6 +110,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/settings/reset-system', [AdminController::class, 'resetSystem'])->name('settings.reset-system');
     });
 
+    // Public pages
     Route::get('contact', function () {
         return view('public.contact');
     })->name('contact');
@@ -101,12 +145,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
+// Notification routes
 Route::middleware(['auth'])->prefix('notifications')->name('notifications.')->group(function () {
     Route::get('/', [NotificationController::class, 'index'])->name('index');
     Route::post('/{id}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('mark-read');
     Route::post('/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
     Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
+});
+
+// API routes للاستخدام مع AJAX (اختياري)
+Route::prefix('api/admin')->name('api.admin.')->middleware(['auth', 'role:admin'])->group(function () {
+    Route::controller(AdmissionController::class)->prefix('admissions')->name('admissions.')->group(function () {
+        // البحث السريع
+        Route::get('search', 'quickSearch')->name('search');
+
+        // إحصائيات سريعة
+        Route::get('stats', 'statistics')->name('stats');
+
+        // تحديث حالة متعددة
+        Route::patch('bulk-update', 'bulkAction')->name('bulk-update');
+
+        // حذف متعدد
+        Route::delete('bulk-delete', 'bulkAction')->name('bulk-delete');
+
+        // التحقق من رقم الهوية
+        Route::post('validate-id', 'checkIdAvailability')->name('validate-id');
+    });
 });
 
 require __DIR__ . '/auth.php';

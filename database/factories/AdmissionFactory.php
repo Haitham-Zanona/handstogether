@@ -10,6 +10,15 @@ class AdmissionFactory extends Factory
 
     public function definition()
     {
+
+        $studentId = $this->generateUniqueId();
+        $parentId  = $this->generateUniqueId();
+
+// تأكد أن رقم الطالب مختلف عن الوالد
+        while ($parentId === $studentId) {
+            $parentId = $this->generateUniqueId();
+        }
+
         return [
             'student_name'       => fake('ar_SA')->name(),
             'parent_name'        => fake('ar_SA')->name(),
@@ -44,5 +53,18 @@ class AdmissionFactory extends Factory
             'reviewed_at' => fake()->dateTimeBetween('-1 month', 'now'),
             'notes'       => 'تم الرفض لأسباب إدارية',
         ]);
+    }
+
+    public function generateUniqueId(): string
+    {
+        do {
+            // توليد رقم عشوائي من 9 أرقام
+            $id = str_pad(random_int(100000000, 999999999), 9, '0', STR_PAD_LEFT);
+        } while (
+            Admission::where('student_id', $id)->exists() ||
+            Admission::where('parent_id', $id)->exists()
+        );
+
+        return $id;
     }
 }

@@ -55,7 +55,7 @@ class AcademyNotification extends Notification
     {
         return new self(
             "طلب انتساب جديد: {$studentName} - ولي الأمر: {$parentName}",
-            route('admin.admissions'),
+            route('admin.admissions.index'),
             'info'
         );
     }
@@ -66,6 +66,19 @@ class AcademyNotification extends Notification
             "تم قبول طلب انتساب {$studentName} بنجاح",
             route('parent.dashboard'),
             'success'
+        );
+    }
+
+    public static function admissionRejected($studentName, $reason = null)
+    {
+        $message = "نأسف لإبلاغكم برفض طلب انتساب {$studentName}";
+        if ($reason) {
+            $message .= ". السبب: {$reason}";
+        }
+        return new self(
+            $message,
+            null,
+            'error'
         );
     }
 
