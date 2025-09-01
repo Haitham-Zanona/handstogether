@@ -282,6 +282,38 @@ class AdminController extends Controller
         return back()->with('success', 'تم حذف المجموعة "' . $groupName . '" بنجاح');
     }
 
+    public function getCalendarData()
+    {
+
+        $lectures = Lecture::with(['teacher.user', 'group'])
+            ->get()
+            ->map(function ($lecture) {
+                return [
+                    'id'                 => $lecture->id,
+                    'title'              => $lecture->title,
+                    'date'               => $lecture->date->format('Y-m-d'),
+                    'start_time'         => $lecture->start_time->format('H:i'),
+                    'end_time'           => $lecture->end_time->format('H:i'),
+                    'description'        => $lecture->description ?? '',
+                    'teacher'            => [
+                        'user' => [
+                            'name' => $lecture->teacher->user->name,
+                        ],
+                    ],
+                    'group'              => [
+                        'id'   => $lecture->group->id,
+                        'name' => $lecture->group->name,
+                    ],
+                    'is_today'           => $lecture->is_today,
+                    'has_started'        => $lecture->has_started,
+                    'attendance_summary' => $lecture->getAttendanceSummary(),
+                ];
+            });
+
+        return response()->json($lectures);
+
+    }
+
     public function attendance()
     {
         $groups = Group::with([

@@ -81,6 +81,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('bulk-action', 'bulkAction')->name('bulk-action');
         });
 
+        Route::post('/admissions/check-application-number', [AdmissionController::class, 'checkApplicationNumber'])->name('admissions.check-application-number');
+
+        Route::post('/admissions/check-name-duplication', [AdmissionController::class, 'checkNameDuplication'])->name('admissions.check-name-duplication');
+
         // طلبات الانتساب - Routes للبيانات والإحصائيات
         Route::prefix('admissions-data')->name('admissions.')->group(function () {
             // إحصائيات طلبات الانتساب
@@ -95,6 +99,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // التحقق من توفر رقم الهوية
             Route::post('check-id-availability', [AdmissionController::class, 'checkIdAvailability'])->name('check-id');
         });
+
+        Route::get('/lectures/calendar-data', [AdminController::class, 'getCalendarData'])
+            ->name('lectures.calendar-data');
 
         // Routes الأصلية الأخرى
         Route::get('/groups', [AdminController::class, 'groups'])->name('groups');

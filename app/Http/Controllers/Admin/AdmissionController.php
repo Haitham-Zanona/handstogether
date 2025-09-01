@@ -176,6 +176,59 @@ class AdmissionController extends Controller
         }
     }
 
+    public function checkNameDuplication(Request $request
+    ) {
+        $studentName = $request->input('student_name');
+        $parentName  = $request->input('parent_name');
+
+        $exists = Admission::where('student_name', $studentName)
+            ->where('parent_name', $parentName)
+            ->exists();
+
+        return response()->json([
+            'available' => ! $exists,
+            'message'   => $exists ? 'يوجد طالب بنفس الاسم واسم ولي الأمر مسجل مسبقاً' : 'الاسم متاح',
+        ]);
+
+    }
+
+    public function checkApplicationNumber(Request $request)
+    {
+        $request->validate([
+            'application_number' => ['required', 'string', 'size:4'], // تحديد 4 أرقام بالضبط
+            'admission_id'       => ['nullable', 'exists:admissions,id'],
+        ]);
+
+        $applicationNumber = $request->application_number;
+
+// التحقق من النطاق المسموح (0000-1000)
+        $numValue = (int) $applicationNumber;
+        if ($numValue > 1000) {
+            return response()->json([
+                'available' => false,
+                'message'   => 'رقم الطلب يجب أن يكون بين 0000 و 1000',
+            ]);
+        }
+
+        $query = Admission::where('application_number', $applicationNumber);
+
+// استثناء الطلب الحالي عند التعديل
+        if ($request->admission_id) {
+            $query->where('id', '!=', $request->admission_id);
+        }
+
+// استثناء الطلبات المرفوضة فقط (تضمين المقبولة والمعلقة)
+        $query->where('status', '!=', 'rejected');
+
+        $exists = $query->exists();
+
+        return response()->json([
+            'available' => ! $exists,
+            'message'   => $exists ? 'رقم الطلب مستخدم مسبقاً' : 'رقم الطلب متاح ويمكن استخدامه',
+        ]);
+
+    }
+
     /**
      * موافقة على طلب الانتساب
      */

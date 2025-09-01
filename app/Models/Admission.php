@@ -19,44 +19,27 @@ class Admission extends Model
      */
     protected $fillable = [
         // بيانات الطلب الأساسية (من الموديل الأصلي)
-        'student_name',
-        'parent_name',
-        'phone',
-        'status',
-
-        // بيانات الطلب المفصلة (من الموديل الجديد)
         'day',
         'application_date',
         'application_number',
-
-        // بيانات الطالب التفصيلية
+        'student_name',
         'student_id',
         'birth_date',
         'grade',
         'academic_level',
-
-        // بيانات ولي الأمر التفصيلية
+        'parent_name',
         'parent_id',
         'parent_job',
-
-        // بيانات التواصل المتقدمة
+        'phone',
         'father_phone',
         'mother_phone',
         'address',
-
-        // المعلومات المالية
         'monthly_fee',
         'study_start_date',
         'payment_due_from',
         'payment_due_to',
+        'status',
 
-        // حالة الطلب وإدارة المجموعات
-        'group_id',
-        'rejection_reason',
-
-        // معلومات المستخدمين المُنشئين
-        'parent_user_id',
-        'student_user_id',
     ];
 
     /**

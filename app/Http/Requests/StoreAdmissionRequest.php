@@ -22,45 +22,25 @@ class StoreAdmissionRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            // بيانات الطلب
-            'day'                => ['required', 'string', 'in:الأحد,الإثنين,الثلاثاء,الأربعاء,الخميس,الجمعة,السبت'],
-            'application_date'   => ['required', 'date', 'before_or_equal:today'],
-            'application_number' => ['nullable', 'string', 'max:50'],
+            'day'                => 'required|string',
+            'application_date'   => 'required|date',
+            'application_number' => 'nullable|string|size:4',
+            'student_name'       => 'required|string|max:255',
+            'student_id'         => 'required|string|size:9',
+            'birth_date'         => 'required|date',
+            'grade'              => 'required|string',
+            'academic_level'     => 'required|string',
+            'parent_name'        => 'required|string|max:255',
+            'parent_id'          => 'required|string|size:9',
+            'parent_job'         => 'required|string|max:255',
+            'father_phone'       => 'required|string|regex:/^05\d{8}$/',
+            'mother_phone'       => 'nullable|string|regex:/^05\d{8}$/',
+            'address'            => 'required|string',
+            'monthly_fee'        => 'required|numeric|min:0',
+            'study_start_date'   => 'required|date',
+            'payment_due_from'   => 'required|date',
+            'payment_due_to'     => 'required|date',
 
-            // بيانات الطالب
-            'student_name'       => ['required', 'string', 'max:255', 'regex:/^[\p{Arabic}\s]+$/u'],
-            'student_id'         => [
-                'required',
-                'digits:9',
-                Rule::unique('admissions', 'student_id'),
-            ],
-            'birth_date'         => ['required', 'date', 'before:today', 'after:' . now()->subYears(25)->toDateString()],
-            'grade'              => [
-                'required',
-                'string',
-                'in:صف أول ابتدائي,صف ثاني ابتدائي,صف ثالث ابتدائي,صف رابع ابتدائي,صف خامس ابتدائي,صف سادس ابتدائي,صف سابع,صف ثامن,صف تاسع,صف عاشر',
-            ],
-            'academic_level'     => [
-                'required',
-                'string',
-                'in:راسب,مقبول,جيد,جيد جداً,ممتاز,ممتاز جداً',
-            ],
-
-            // بيانات ولي الأمر
-            'parent_name'        => ['required', 'string', 'max:255', 'regex:/^[\p{Arabic}\s]+$/u'],
-            'parent_id'          => ['required', 'digits:9'],
-            'parent_job'         => ['required', 'string', 'max:100'],
-
-            // بيانات التواصل
-            'father_phone'       => ['required', 'regex:/^05[0-9]{8}$/', 'size:10'],
-            'mother_phone'       => ['nullable', 'regex:/^05[0-9]{8}$/', 'size:10'],
-            'address'            => ['required', 'string', 'min:10', 'max:500'],
-
-            // المعلومات المالية
-            'monthly_fee'        => ['required', 'numeric', 'min:0', 'max:9999.99'],
-            'study_start_date'   => ['required', 'date', 'after_or_equal:today'],
-            'payment_due_from'   => ['required', 'date'],
-            'payment_due_to'     => ['required', 'date', 'after:payment_due_from'],
         ];
 
         // إضافة قواعد إضافية عند التحديث
