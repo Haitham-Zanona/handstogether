@@ -51,13 +51,106 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     // Admin routes
+    // Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
+
+    //     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+
+    //     // طلبات الانتساب - Routes الأساسية (Resource)
+    //     Route::resource('admissions', AdmissionController::class);
+
+    //     // طلبات الانتساب - Routes إضافية
+    //     Route::controller(AdmissionController::class)->prefix('admissions')->name('admissions.')->group(function () {
+    //         // موافقة ورفض الطلبات
+    //         Route::patch('{admission}/approve', 'approve')->name('approve');
+    //         Route::patch('{admission}/reject', 'reject')->name('reject');
+
+    //         // إعادة تعيين حالة الطلب (للمشرفين فقط)
+    //         Route::patch('{admission}/reset-status', 'resetStatus')
+    //             ->name('reset-status')
+    //             ->middleware('admission.permissions:reset_admission_status');
+
+    //         // تحويل الطلب إلى طالب
+    //         Route::post('{admission}/convert-to-student', 'convertToStudent')->name('convert-to-student');
+
+    //         // طباعة بيانات طلب معين
+    //         Route::get('{admission}/print', 'print')->name('print');
+
+    //         // إرسال رسالة SMS
+    //         Route::post('{admission}/send-sms', 'sendSMS')->name('send-sms');
+
+    //         // معالجة متعددة للطلبات
+    //         Route::post('bulk-action', 'bulkAction')->name('bulk-action');
+    //     });
+
+    //     Route::get('/admissions/groups', [AdmissionController::class, 'getGroups'])->name('admissions.groups');
+    //     Route::get('/admissions/quick-search', [AdmissionController::class, 'quickSearch'])->name('admissions.quick-search');
+
+    //     Route::post('/admissions/check-application-number', [AdmissionController::class, 'checkApplicationNumber'])->name('admissions.check-application-number');
+
+    //     Route::post('/admissions/check-name-duplication', [AdmissionController::class, 'checkNameDuplication'])->name('admissions.check-name-duplication');
+    //     Route::post('/admissions/check-id-availability', [AdmissionController::class, 'checkIdAvailability'])->name('admissions.check-id-availability');
+
+    //     // طلبات الانتساب - Routes للبيانات والإحصائيات
+    //     Route::prefix('admissions-data')->name('admissions.')->group(function () {
+    //         // إحصائيات طلبات الانتساب
+    //         Route::get('statistics', [AdmissionController::class, 'statistics'])->name('statistics');
+
+    //         // تصدير البيانات
+    //         Route::get('export', [AdmissionController::class, 'export'])->name('export');
+
+    //         // البحث السريع
+    //         Route::get('quick-search', [AdmissionController::class, 'quickSearch'])->name('quick-search');
+
+    //         // التحقق من توفر رقم الهوية
+    //         Route::post('check-id-availability', [AdmissionController::class, 'checkIdAvailability'])->name('check-id');
+    //     });
+
+    //     Route::get('/lectures/calendar-data', [AdminController::class, 'getCalendarData'])
+    //         ->name('lectures.calendar-data');
+
+    //     // Routes الأصلية الأخرى
+    //     Route::get('/groups', [AdminController::class, 'groups'])->name('groups');
+    //     Route::post('/groups', [AdminController::class, 'storeGroup'])->name('groups.store');
+    //     Route::put('/groups/{group}', [AdminController::class, 'updateGroup'])->name('groups.update');
+    //     Route::delete('/groups/{group}', [AdminController::class, 'destroyGroup'])->name('groups.destroy');
+    //     Route::get('/attendance', [AdminController::class, 'attendance'])->name('attendance');
+    //     Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
+    //     Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
+    //     Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+    //     Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+    //     Route::post('/settings/clear-data', [AdminController::class, 'clearData'])->name('settings.clear-data');
+    //     Route::post('/settings/reset-system', [AdminController::class, 'resetSystem'])->name('settings.reset-system');
+    // });
+
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
+
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
-        // طلبات الانتساب - Routes الأساسية (Resource)
-        Route::resource('admissions', AdmissionController::class);
+        // ========== طلبات الانتساب - Routes الخاصة أولاً ==========
+        // هذه يجب أن تأتي قبل resource routes
 
-        // طلبات الانتساب - Routes إضافية
+        // المجموعات والبحث السريع
+        Route::get('/admissions/groups', [AdmissionController::class, 'getGroups'])->name('admissions.groups');
+        Route::get('/admissions/quick-search', [AdmissionController::class, 'quickSearch'])->name('admissions.quick-search');
+
+        // التحقق من البيانات
+        Route::post('/admissions/check-application-number', [AdmissionController::class, 'checkApplicationNumber'])->name('admissions.check-application-number');
+        Route::post('/admissions/check-name-duplication', [AdmissionController::class, 'checkNameDuplication'])->name('admissions.check-name-duplication');
+        Route::post('/admissions/check-id-availability', [AdmissionController::class, 'checkIdAvailability'])->name('admissions.check-id-availability');
+
+        // طلبات الانتساب - Routes للبيانات والإحصائيات
+        Route::prefix('admissions-data')->name('admissions.')->group(function () {
+            // إحصائيات طلبات الانتساب
+            Route::get('statistics', [AdmissionController::class, 'statistics'])->name('statistics');
+            // تصدير البيانات
+            Route::get('export', [AdmissionController::class, 'export'])->name('export');
+            // البحث السريع
+            Route::get('quick-search', [AdmissionController::class, 'quickSearch'])->name('quick-search');
+            // التحقق من توفر رقم الهوية
+            Route::post('check-id-availability', [AdmissionController::class, 'checkIdAvailability'])->name('check-id');
+        });
+
+        // طلبات الانتساب - Routes إضافية خاصة بمعرف معين
         Route::controller(AdmissionController::class)->prefix('admissions')->name('admissions.')->group(function () {
             // موافقة ورفض الطلبات
             Route::patch('{admission}/approve', 'approve')->name('approve');
@@ -77,40 +170,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // إرسال رسالة SMS
             Route::post('{admission}/send-sms', 'sendSMS')->name('send-sms');
 
-            // معالجة متعددة للطلبات
+            // معالجة متعددة للطلبات - هذا لا يحتاج معرف
             Route::post('bulk-action', 'bulkAction')->name('bulk-action');
         });
 
-        Route::post('/admissions/check-application-number', [AdmissionController::class, 'checkApplicationNumber'])->name('admissions.check-application-number');
+        // ========== طلبات الانتساب - Resource Routes أخيراً ==========
+        // هذا يجب أن يأتي في النهاية
+        Route::resource('admissions', AdmissionController::class);
 
-        Route::post('/admissions/check-name-duplication', [AdmissionController::class, 'checkNameDuplication'])->name('admissions.check-name-duplication');
-
-        // طلبات الانتساب - Routes للبيانات والإحصائيات
-        Route::prefix('admissions-data')->name('admissions.')->group(function () {
-            // إحصائيات طلبات الانتساب
-            Route::get('statistics', [AdmissionController::class, 'statistics'])->name('statistics');
-
-            // تصدير البيانات
-            Route::get('export', [AdmissionController::class, 'export'])->name('export');
-
-            // البحث السريع
-            Route::get('quick-search', [AdmissionController::class, 'quickSearch'])->name('quick-search');
-
-            // التحقق من توفر رقم الهوية
-            Route::post('check-id-availability', [AdmissionController::class, 'checkIdAvailability'])->name('check-id');
-        });
-
+        // ========== Routes أخرى ==========
         Route::get('/lectures/calendar-data', [AdminController::class, 'getCalendarData'])
             ->name('lectures.calendar-data');
 
-        // Routes الأصلية الأخرى
+        // Groups Routes
         Route::get('/groups', [AdminController::class, 'groups'])->name('groups');
         Route::post('/groups', [AdminController::class, 'storeGroup'])->name('groups.store');
         Route::put('/groups/{group}', [AdminController::class, 'updateGroup'])->name('groups.update');
         Route::delete('/groups/{group}', [AdminController::class, 'destroyGroup'])->name('groups.destroy');
+
+        // Other Admin Routes
         Route::get('/attendance', [AdminController::class, 'attendance'])->name('attendance');
         Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
         Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
+
+        // Settings Routes
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
         Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
         Route::post('/settings/clear-data', [AdminController::class, 'clearData'])->name('settings.clear-data');

@@ -55,6 +55,33 @@
         الدفعات الشهرية
     </a>
 </li>
+<li>
+    <a href="{{ route('admin.payments') }}"
+        class="flex items-center px-6 py-3 text-white hover:bg-secondary rounded-r-lg mx-2 {{ request()->routeIs('admin.payments*') ? 'bg-secondary' : '' }}">
+        <svg class="w-5 h-5 ml-3" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <!-- Person 1 -->
+            <circle cx="30" cy="25" r="8" fill="#fff" stroke="#fff" stroke-width="1" />
+            <rect x="22" y="33" width="16" height="20" rx="3" fill="#fff" stroke="#fff" stroke-width="1" />
+
+            <!-- Person 2 (center, slightly forward) -->
+            <circle cx="50" cy="30" r="10" fill="#fff" stroke="#fff" stroke-width="1" />
+            <rect x="40" y="40" width="20" height="25" rx="4" fill="#fff" stroke="#fff" stroke-width="1" />
+
+            <!-- Person 3 -->
+            <circle cx="70" cy="25" r="8" fill="#fff" stroke="#fff" stroke-width="1" />
+            <rect x="62" y="33" width="16" height="20" rx="3" fill="#fff" stroke="#fff" stroke-width="1" />
+
+            <!-- Arms for center person -->
+            <rect x="35" y="45" width="8" height="3" rx="1" fill="#fff" />
+            <rect x="57" y="45" width="8" height="3" rx="1" fill="#fff" />
+
+            <!-- Base/ground line -->
+            <line x1="15" y1="75" x2="85" y2="75" stroke="#fff" stroke-width="2" />
+        </svg>
+
+        إدارة العاملين
+    </a>
+</li>
 
 {{-- يمكن إضافة المزيد من الروابط --}}
 <li>

@@ -3,7 +3,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAdmissionRequest;
-use App\Jobs\ProcessAdmissionApproval;
 use App\Models\Admission;
 use App\Models\Group;
 use App\Services\AdmissionService;
@@ -19,36 +18,117 @@ class AdmissionController extends Controller
         $this->admissionService = $admissionService;
     }
 
+    public function getGroups(Request $request)
+    {
+        try {
+            $groups = Group::select('id', 'name')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+
+            return response()->json($groups);
+
+        } catch (\Exception $e) {
+            Log::error('خطأ في جلب المجموعات', [
+                'error'   => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'error'   => 'خطأ في جلب المجموعات',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $query = Admission::query()->with('group');
+        try {
+            $query = Admission::query()->with('group');
 
-        // البحث
-        if ($request->filled('search')) {
-            $query->search($request->search);
+            // البحث
+            if ($request->filled('search')) {
+                $searchTerm = $request->search;
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('student_name', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('parent_name', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('application_number', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('student_id', 'LIKE', "%{$searchTerm}%");
+                });
+            }
+
+            // فلترة الحالة
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            // فلترة المجموعة
+            if ($request->filled('group_id')) {
+                $query->where('group_id', $request->group_id);
+            }
+
+            // الترتيب
+            $query->orderBy('created_at', 'desc');
+
+            // التصفح
+            $admissions = $query->paginate(15)->withQueryString();
+
+            // إذا كان الطلب يتوقع JSON (AJAX)
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success'    => true,
+                    'data'       => $admissions->items(),
+                    'admissions' => [
+                        'data'         => $admissions->items(),
+                        'current_page' => $admissions->currentPage(),
+                        'last_page'    => $admissions->lastPage(),
+                        'total'        => $admissions->total(),
+                        'per_page'     => $admissions->perPage(),
+                        'from'         => $admissions->firstItem(),
+                        'to'           => $admissions->lastItem(),
+                    ],
+                    'pagination' => [
+                        'current_page' => $admissions->currentPage(),
+                        'last_page'    => $admissions->lastPage(),
+                        'total'        => $admissions->total(),
+                        'count'        => $admissions->count(),
+                    ],
+                ]);
+            }
+
+            // المجموعات للموافقة على الطلبات
+            $groups = Group::select('id', 'name', 'students_count')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+
+            // إرجاع الصفحة العادية
+            return view('admin.admissions', compact('admissions', 'groups'));
+
+        } catch (\Exception $e) {
+            Log::error('خطأ في جلب طلبات الانتساب', [
+                'error'        => $e->getMessage(),
+                'file'         => $e->getFile(),
+                'line'         => $e->getLine(),
+                'user_id'      => auth()->id(),
+                'request_data' => $request->all(),
+            ]);
+
+            // إذا كان طلب AJAX
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'خطأ في جلب البيانات',
+                    'error'   => config('app.debug') ? $e->getMessage() : 'حدث خطأ غير متوقع',
+                ], 500);
+            }
+
+            // إذا كان طلب صفحة عادي
+            return back()->with('error', 'خطأ في جلب البيانات: ' . $e->getMessage());
         }
-
-        // فلترة الحالة
-        if ($request->filled('status')) {
-            $query->withStatus($request->status);
-        }
-
-        // الترتيب
-        $query->orderBy('created_at', 'desc');
-
-        // التصفح
-        $admissions = $query->paginate(15)->withQueryString();
-
-        // المجموعات للموافقة على الطلبات
-        $groups = Group::select('id', 'name', 'students_count')
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.admissions', compact('admissions', 'groups'));
     }
 
     /**
@@ -234,25 +314,35 @@ class AdmissionController extends Controller
      */
     public function approve(Request $request, Admission $admission)
     {
+        // أضف هذا للتشخيص
+        Log::info('طلب الموافقة تم استلامه', [
+            'admission_id' => $admission->id,
+            'request_data' => $request->all(),
+            'user_id'      => auth()->id(),
+        ]);
+
         $request->validate([
             'group_id' => ['required', 'exists:groups,id'],
-        ], [
-            'group_id.required' => 'يرجى اختيار المجموعة',
-            'group_id.exists'   => 'المجموعة المختارة غير موجودة',
         ]);
 
         try {
-            ProcessAdmissionApproval::dispatch($admission, $request->group_id);
+            // تشغيل مباشر بدلاً من Job
+            $admission->update([
+                'status'      => 'approved',
+                'group_id'    => $request->group_id,
+                'approved_at' => now(),
+                'approved_by' => auth()->id(),
+            ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => "تم إرسال طلب قبول انتساب {$admission->student_name} للمعالجة بنجاح",
+                    'message' => "تم قبول انتساب {$admission->student_name} بنجاح",
                 ]);
             }
 
             return redirect()->route('admin.admissions.index')
-                ->with('success', "تم إرسال طلب قبول انتساب {$admission->student_name} للمعالجة بنجاح");
+                ->with('success', "تم قبول انتساب {$admission->student_name} بنجاح");
 
         } catch (\Exception $e) {
             Log::error('خطأ في قبول طلب الانتساب', [
@@ -264,12 +354,13 @@ class AdmissionController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage(),
+                    'message' => 'حدث خطأ أثناء قبول الطلب: ' . $e->getMessage(),
                 ], 500);
             }
 
-            return back()->with('error', $e->getMessage());
+            return back()->with('error', 'حدث خطأ أثناء قبول الطلب');
         }
+
     }
 
     /**

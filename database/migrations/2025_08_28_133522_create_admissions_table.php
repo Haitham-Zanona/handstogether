@@ -40,7 +40,15 @@ return new class extends Migration
 
 // حالة الطلب
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->foreignId('group_id')->nullable()->constrained('groups')->onDelete('set null');
+
+// العلاقة مع المجموعات
+            $table->unsignedBigInteger('group_id')->nullable();
+            $table->foreign('group_id')->references('id')->on('groups')->onDelete('set null');
+
+// موافقة الإدارة
+            $table->timestamp('approved_at')->nullable();
+            $table->unsignedBigInteger('approved_by')->nullable();
+            $table->foreign('approved_by')->references('id')->on('users')->onDelete('set null');
 
 // تواريخ الإنشاء والتحديث
             $table->timestamps();
@@ -49,8 +57,8 @@ return new class extends Migration
             $table->index(['status', 'created_at']);
             $table->index('student_id');
             $table->index('application_number');
-
         });
+
     }
 
     public function down()

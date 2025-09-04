@@ -133,12 +133,11 @@ class Admission extends Model
     public function scopeSearch($query, $search)
     {
         return $query->where(function ($q) use ($search) {
-            $q->where('student_name', 'like', "%{$search}%")
-                ->orWhere('parent_name', 'like', "%{$search}%")
-                ->orWhere('student_id', 'like', "%{$search}%")
-                ->orWhere('father_phone', 'like', "%{$search}%")
-                ->orWhere('phone', 'like', "%{$search}%") // للتوافق مع الموديل الأصلي
-                ->orWhere('application_number', 'like', "%{$search}%");
+            $q->where('student_name', 'LIKE', "%{$search}%")
+                ->orWhere('parent_name', 'LIKE', "%{$search}%")
+                ->orWhere('application_number', 'LIKE', "%{$search}%")
+                ->orWhere('student_id', 'LIKE', "%{$search}%");
+
         });
     }
 
@@ -147,6 +146,8 @@ class Admission extends Model
      */
     public function scopeWithStatus($query, $status)
     {
+        // return $query->where('status', $status);
+
         if ($status) {
             return $query->where('status', $status);
         }
@@ -184,10 +185,16 @@ class Admission extends Model
     /**
      * للتوافق مع الموديل الأصلي
      */
-    // public function getStatusInArabicAttribute()
-    // {
-    //     return $this->statusInArabic;
-    // }
+    public function getStatusInArabicAttribute()
+    {
+        // return $this->statusInArabic;
+        return match ($this->status) {
+            'pending' => 'في الانتظار',
+            'approved' => 'مقبول',
+            'rejected' => 'مرفوض',
+            default => 'غير محدد'
+        };
+    }
 
     /**
      * عمر الطالب
@@ -442,19 +449,22 @@ class Admission extends Model
     {
         return [
             'id'                 => $this->id,
-            'application_number' => $this->application_number,
-            'student_name'       => $this->formatted_student_name,
-            'parent_name'        => $this->formatted_parent_name,
-            'phone'              => $this->phone,
+            'student_name'       => $this->student_name,
+            'parent_name'        => $this->parent_name,
+            'phone'              => $this->father_phone ?: $this->phone,
+            'father_phone'       => $this->father_phone,
+            'mother_phone'       => $this->mother_phone,
             'status'             => $this->status,
-            'status_arabic'      => $this->status_in_arabic,
+            'status_in_arabic'   => $this->status_in_arabic,
+            'application_number' => $this->application_number,
+            'student_id'         => $this->student_id,
             'grade'              => $this->grade,
-            'age'                => $this->student_age,
-            'group_name'         => $this->group?->name,
-            'created_date'       => $this->created_at?->format('Y-m-d'),
-            'can_be_approved'    => $this->canBeApproved(),
-            'is_expired'         => $this->isExpired(),
+            'application_date'   => $this->application_date,
+            'created_at'         => $this->created_at?->format('Y-m-d'),
+            'group_id'           => $this->group_id,
+            'group'              => $this->group?->only(['id', 'name']),
         ];
+
     }
 
     // ================== Boot Method ==================
