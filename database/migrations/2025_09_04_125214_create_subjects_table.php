@@ -16,17 +16,44 @@ return new class extends Migration
             $table->id();
             $table->string('name');                    // اسم المادة
             $table->string('grade_level')->nullable(); // المرحلة المرتبطة (اختياري)
+            $table->text('description')->nullable();   // وصف المادة
+            $table->boolean('is_active')->default(true); // حالة المادة
             $table->timestamps();
 
         });
 
-        // إدخال المواد الأساسية
-        DB::table('subjects')->insert([
-            ['name' => 'اللغة إنجليزية'],
-            ['name' => 'اللغة عربية'],
-            ['name' => 'الرياضيات'],
-            ['name' => 'العلوم'],
-        ]);
+        $subjects = ['اللغة الإنجليزية', 'اللغة العربية', 'الرياضيات', 'العلوم'];
+        $gradeLevels = [
+            'الصف الأول',
+            'الصف الثاني',
+            'الصف الثالث',
+            'الصف الرابع',
+            'الصف الخامس',
+            'الصف السادس',
+            'الصف السابع',
+            'الصف الثامن',
+            'الصف التاسع',
+            'الصف العاشر',
+        ];
+
+        $insertData = [];
+
+        // إنشاء مواد لكل مرحلة
+        foreach ($gradeLevels as $grade) {
+            foreach ($subjects as $subject) {
+                $insertData[] = [
+                    'name' => $subject,
+                    'grade_level' => $grade,
+                    'description' => $subject . ' للطلاب في ' . $grade,
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+        }
+
+        // إدخال البيانات
+        DB::table('subjects')->insert($insertData);
 
     }
 
