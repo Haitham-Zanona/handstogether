@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,7 +17,7 @@ class GroupSubject extends Model
     ];
 
     protected $casts = [
-        'schedule' => 'array',
+        'schedule'  => 'array',
         'is_active' => 'boolean',
     ];
 
@@ -138,9 +137,9 @@ class GroupSubject extends Model
      */
     public function getHasScheduleAttribute()
     {
-        return !empty($this->schedule) && 
-               (isset($this->schedule['days']) && !empty($this->schedule['days'])) ||
-               (isset($this->schedule['times']) && !empty($this->schedule['times']));
+        return ! empty($this->schedule) &&
+            (isset($this->schedule['days']) && ! empty($this->schedule['days'])) ||
+            (isset($this->schedule['times']) && ! empty($this->schedule['times']));
     }
 
     /**
@@ -148,7 +147,7 @@ class GroupSubject extends Model
      */
     public function getWeeklyClassesCountAttribute()
     {
-        if (!$this->has_schedule) {
+        if (! $this->has_schedule) {
             return 0;
         }
 

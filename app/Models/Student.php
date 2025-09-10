@@ -6,16 +6,22 @@ use Illuminate\Database\Eloquent\Model;
 class Student extends Model
 {
     protected $fillable = [
-        'user_id', 'parent_id', 'group_id', 'birth_date',
+        'user_id', 'parent_id', 'group_id', 'birth_date', 'admission_id',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
     ];
 
+    // العلاقات الموجودة (بدون تغيير)
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function admission()
+    {
+        return $this->belongsTo(Admission::class);
     }
 
     public function parent()
@@ -38,13 +44,12 @@ class Student extends Model
         return $this->hasMany(Payment::class);
     }
 
-    // Get age
+    // الدوال الموجودة (بدون تغيير)
     public function getAgeAttribute()
     {
         return $this->birth_date?->age;
     }
 
-    // Get attendance percentage
     public function getAttendancePercentage()
     {
         $totalLectures = $this->group?->lectures()->count() ?? 0;
@@ -59,7 +64,6 @@ class Student extends Model
         return round(($presentCount / $totalLectures) * 100, 2);
     }
 
-    // Get monthly attendance for specific month
     public function getMonthlyAttendance($month = null)
     {
         $month = $month ?: now()->format('Y-m');
@@ -73,7 +77,6 @@ class Student extends Model
             ->groupBy('status');
     }
 
-    // Get payment status for current month
     public function getCurrentMonthPaymentStatus()
     {
         return $this->payments()
@@ -81,7 +84,6 @@ class Student extends Model
             ->first()?->status ?? 'unpaid';
     }
 
-    // Get upcoming lectures
     public function getUpcomingLectures()
     {
         return $this->group?->lectures()
@@ -91,5 +93,49 @@ class Student extends Model
             ->orderBy('start_time')
             ->limit(5)
             ->get() ?? collect();
+    }
+
+    // الدوال الجديدة المقترحة (اختيارية)
+    public function canTransferTo(Group $group)
+    {
+        return $group->can_add_students &&
+        $group->grade_level === $this->group?->grade_level;
+    }
+
+    public function transferTo(Group $newGroup)
+    {
+        if ($this->canTransferTo($newGroup)) {
+            $oldGroup = $this->group;
+
+            $this->update(['group_id' => $newGroup->id]);
+
+            if ($oldGroup) {
+                $oldGroup->decrement('students_count');
+            }
+            $newGroup->increment('students_count');
+
+            return true;
+        }
+        return false;
+    }
+
+    public function leaveGroup()
+    {
+        if ($this->group) {
+            $this->group->decrement('students_count');
+            $this->update(['group_id' => null]);
+            return true;
+        }
+        return false;
+    }
+
+    public function hasGroup()
+    {
+        return ! is_null($this->group_id);
+    }
+
+    public function getGroupNameAttribute()
+    {
+        return $this->group ? $this->group->full_name : 'غير منضم لمجموعة';
     }
 }

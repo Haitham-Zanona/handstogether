@@ -17,6 +17,10 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->boolean('is_active')->default(true);                                            // إضافة العمود الجديد
+            $table->string('national_id')->nullable();                                              // رقم الهوية
+            $table->date('birth_date')->nullable();                                                 // تاريخ الميلاد
+            $table->foreignId('parent_id')->nullable()->constrained('users')->onDelete('set null'); // للطلاب - ولي الأمر
             $table->rememberToken();
             $table->timestamps();
         });

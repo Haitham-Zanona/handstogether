@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 use App\Models\Admission;
 use App\Models\Attendance;
 use App\Models\Group;
-use App\Models\GroupSubject;
 use App\Models\Lecture;
 use App\Models\Payment;
 use App\Models\Student;
-use App\Models\Subject;
 use App\Models\Teacher;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
@@ -95,60 +93,8 @@ class AdminController extends Controller
             return $this->getGroupsData();
         }
 
-// حساب الإحصائيات للواجهة
-        $stats = $this->calculateGroupsStats();
-
-// وإلا أرجع الواجهة الجديدة مع الإحصائيات
-        return view('admin.groups.index', compact('stats'));
-
-    }
-
-    public function data()
-    {
-        try {
-            $groups = Group::with('teachers')->get();
-            $stats  = [
-                'total_groups'   => Group::count(),
-                'total_students' => Student::count(),
-                // ...
-            ];
-
-            return response()->json([
-                'success' => true,
-                'groups'  => $groups,
-                'stats'   => $stats,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في تحميل البيانات',
-            ], 500);
-        }
-
-    }
-
-    private function calculateGroupsStats()
-    {
-        $totalGroups     = Group::count();
-        $totalStudents   = Group::sum('students_count');
-        $fullGroups      = Group::whereRaw('students_count >= max_capacity')->count();
-        $todayLectures   = Lecture::whereDate('date', today())->count();
-        $availableGroups = Group::where('is_active', true)
-            ->whereRaw('students_count < max_capacity')
-            ->count();
-        $activeGroups = Group::where('is_active', true)->count();
-
-        return [
-            'total_groups'     => $totalGroups,
-            'total_students'   => $totalStudents,
-            'full_groups'      => $fullGroups,
-            'today_lectures'   => $todayLectures,
-            'available_groups' => $availableGroups,
-            'active_groups'    => $activeGroups,
-            'inactive_groups'  => $totalGroups - $activeGroups,
-            'occupancy_rate'   => $totalGroups > 0 ? round(($fullGroups / $totalGroups) * 100, 1) : 0,
-        ];
-
+        // وإلا أرجع الواجهة الجديدة
+        return view('admin.groups.index');
     }
 
     /**
@@ -386,7 +332,7 @@ class AdminController extends Controller
     {
         try {
             // التحقق من وجود طلاب في المجموعة
-            if ($group->students()->count() > 0) {
+            if ($group->students_count > 0) {
                 if (request()->wantsJson()) {
                     return response()->json([
                         'success' => false,
@@ -411,9 +357,9 @@ class AdminController extends Controller
 
             $groupName = $group->name;
 
-            // ✅ حذف العلاقات المتبقية فقط
+            // حذف العلاقات أولاً
             $group->subjects()->detach();
-            $group->groupSubjects()->delete();
+            $group->students()->detach();
 
             // حذف المجموعة
             $group->delete();
@@ -441,119 +387,6 @@ class AdminController extends Controller
 
             return back()->with('error', 'حدث خطأ في حذف المجموعة: ' . $e->getMessage());
         }
-
-    }
-
-    public function addStudentToGroup(Request $request, Group $group)
-    {
-        $validator = Validator::make($request->all(), [
-            'student_id' => 'required|exists:students,id',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'بيانات غير صحيحة',
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
-
-        try {
-            $student = Student::findOrFail($request->student_id);
-
-            // التحقق من أن الطالب ليس في مجموعة أخرى
-            if ($student->hasGroup()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'الطالب موجود بالفعل في مجموعة أخرى',
-                ], 400);
-            }
-
-            DB::beginTransaction();
-
-            // إضافة الطالب للمجموعة
-            $resultGroup = $group->addStudent($student);
-
-            DB::commit();
-
-            $message = $resultGroup->id === $group->id ?
-            'تم إضافة الطالب بنجاح' :
-            'تم إنشاء شعبة جديدة وإضافة الطالب إليها';
-
-            return response()->json([
-                'success'  => true,
-                'message'  => $message,
-                'group_id' => $resultGroup->id,
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في إضافة الطالب: ' . $e->getMessage(),
-            ], 500);
-        }
-
-    }
-
-    public function getAvailableStudents(Request $request)
-    {
-        try {
-            $groupId = $request->get('group_id');
-            $group   = null;
-
-            if ($groupId) {
-                $group = Group::find($groupId);
-            }
-
-            $query = Student::whereNull('group_id')->with(['user', 'admission']);
-
-            // فلترة حسب المرحلة الدراسية إذا تم تحديد مجموعة
-            if ($group) {
-                $query->where(function ($q) use ($group) {
-                    // طلاب من نفس المرحلة من طلبات الانتساب
-                    $q->whereHas('admission', function ($subQuery) use ($group) {
-                        // ✅ التصحيح: استخدام 'grade' بدلاً من 'grade_level'
-                        $subQuery->where('grade', $group->grade_level)
-                            ->where('status', 'approved');
-                    })
-                    // أو طلاب بدون طلب انتساب (مضافين مباشرة)
-                        ->orWhereDoesntHave('admission');
-                });
-            }
-
-            $students = $query->get()->map(function ($student) {
-                return [
-                    'id'             => $student->id,
-                    'name'           => $student->user->name ?? 'غير محدد',
-                    'email'          => $student->user->email ?? '',
-                    'birth_date'     => $student->birth_date?->format('Y-m-d'),
-                    'age'            => $student->age,
-                    // ✅ التصحيح: استخدام 'grade' من admission
-                    'grade_level'    => $student->admission?->grade ?? 'مضاف مباشرة',
-                    'source'         => $student->admission ? 'طلب انتساب' : 'إضافة مباشرة',
-                    'admission_date' => $student->admission?->created_at?->format('Y-m-d'),
-                    // ✅ التصحيح في display_name أيضاً
-                    'display_name'   => $student->user->name . ' (' . ($student->admission?->grade ?? 'مضاف مباشرة') . ')',
-                ];
-            });
-
-            return response()->json([
-                'success'    => true,
-                'students'   => $students,
-                'group_info' => $group ? [
-                    'id'          => $group->id,
-                    'name'        => $group->name,
-                    'grade_level' => $group->grade_level,
-                ] : null,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في جلب الطلاب المتاحين: ' . $e->getMessage(),
-            ], 500);
-        }
-
     }
 
     // ======================== وظائف إدارة الطلاب الجديدة ========================
@@ -564,16 +397,18 @@ class AdminController extends Controller
     public function getGroupStudents(Group $group)
     {
         try {
-            // ✅ استخدام hasMany بدلاً من belongsToMany
             $students = $group->students()->with('user')->get()->map(function ($student) {
                 return [
-                    'id'              => $student->id,
-                    'name'            => $student->user->name ?? 'غير محدد',
-                    'email'           => $student->user->email ?? '',
-                    'birth_date'      => $student->birth_date?->format('Y-m-d'),
-                    'age'             => $student->age,
-                    'enrollment_date' => $student->created_at->format('Y-m-d'),
-                    'group_name'      => $student->group_name,
+                    'id'               => $student->id,
+                    'name'             => $student->user->name ?? 'غير محدد',
+                    'email'            => $student->user->email ?? '',
+                    'student_id'       => $student->student_id,
+                    'phone'            => $student->phone,
+                    'birth_date'       => $student->birth_date,
+                    'address'          => $student->address,
+                    'enrollment_date'  => $student->created_at->format('Y-m-d'),
+                    'is_active'        => $student->is_active,
+                    'pivot_created_at' => $student->pivot->created_at ?? null,
                 ];
             });
 
@@ -594,7 +429,6 @@ class AdminController extends Controller
                 'message' => 'حدث خطأ في جلب بيانات الطلاب: ' . $e->getMessage(),
             ], 500);
         }
-
     }
 
     /**
@@ -625,8 +459,8 @@ class AdminController extends Controller
                 ], 400);
             }
 
-            // ✅ التحقق من وجود الطالب في المجموعة الحالية
-            if ($student->group_id !== $fromGroup->id) {
+            // التحقق من وجود الطالب في المجموعة الحالية
+            if (! $fromGroup->students()->where('student_id', $student->id)->exists()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'الطالب غير موجود في هذه المجموعة',
@@ -635,16 +469,16 @@ class AdminController extends Controller
 
             DB::beginTransaction();
 
-            // ✅ استخدام دالة transferStudentTo من النموذج
-            $success = $fromGroup->transferStudentTo($student, $targetGroup);
+            // إزالة الطالب من المجموعة الحالية
+            $fromGroup->students()->detach($student->id);
+            $fromGroup->removeStudent();
 
-            if (! $success) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'فشل في نقل الطالب',
-                ], 400);
-            }
+            // إضافة الطالب للمجموعة الجديدة
+            $targetGroup->students()->attach($student->id, [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $targetGroup->addStudent();
 
             DB::commit();
 
@@ -660,7 +494,6 @@ class AdminController extends Controller
                 'message' => 'حدث خطأ في نقل الطالب: ' . $e->getMessage(),
             ], 500);
         }
-
     }
 
     /**
@@ -669,8 +502,8 @@ class AdminController extends Controller
     public function removeStudentFromGroup(Group $group, Student $student)
     {
         try {
-            // ✅ التحقق من وجود الطالب في المجموعة
-            if ($student->group_id !== $group->id) {
+            // التحقق من وجود الطالب في المجموعة
+            if (! $group->students()->where('student_id', $student->id)->exists()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'الطالب غير موجود في هذه المجموعة',
@@ -679,8 +512,9 @@ class AdminController extends Controller
 
             DB::beginTransaction();
 
-            // ✅ استخدام دالة removeStudent من النموذج
-            $group->removeStudent($student);
+            // إزالة الطالب من المجموعة
+            $group->students()->detach($student->id);
+            $group->removeStudent();
 
             DB::commit();
 
@@ -696,7 +530,138 @@ class AdminController extends Controller
                 'message' => 'حدث خطأ في إزالة الطالب: ' . $e->getMessage(),
             ], 500);
         }
+    }
 
+    /**
+     * البحث السريع عن الطلاب
+     */
+    public function quickSearchStudents(Request $request)
+    {
+        $search         = $request->get('q', '');
+        $excludeGroupId = $request->get('exclude_group_id');
+
+        if (strlen($search) < 2) {
+            return response()->json([
+                'success'  => true,
+                'students' => [],
+            ]);
+        }
+
+        try {
+            $query = Student::with('user')
+                ->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%');
+                })
+                ->orWhere('student_id', 'like', '%' . $search . '%')
+                ->orWhere('phone', 'like', '%' . $search . '%');
+
+            // استبعاد الطلاب المسجلين في مجموعة معينة
+            if ($excludeGroupId) {
+                $query->whereDoesntHave('groups', function ($q) use ($excludeGroupId) {
+                    $q->where('group_id', $excludeGroupId);
+                });
+            }
+
+            $students = $query->limit(20)->get()->map(function ($student) {
+                return [
+                    'id'         => $student->id,
+                    'name'       => $student->user->name ?? 'غير محدد',
+                    'student_id' => $student->student_id,
+                    'phone'      => $student->phone,
+                    'email'      => $student->user->email ?? '',
+                    'avatar'     => $student->user->avatar ?? null,
+                ];
+            });
+
+            return response()->json([
+                'success'  => true,
+                'students' => $students,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في البحث: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * إضافة طالب للمجموعة
+     */
+    public function addStudentToGroup(Request $request, Group $group)
+    {
+        $validator = Validator::make($request->all(), [
+            'student_id' => 'required|exists:students,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات غير صحيحة',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $student = Student::findOrFail($request->student_id);
+
+            // التحقق من إمكانية إضافة الطالب
+            if (! $group->can_add_students) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'المجموعة ممتلئة أو غير نشطة',
+                ], 400);
+            }
+
+            // التحقق من عدم وجود الطالب في المجموعة مسبقاً
+            if ($group->students()->where('student_id', $student->id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الطالب مسجل في هذه المجموعة مسبقاً',
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            // إضافة الطالب للمجموعة
+            $group->students()->attach($student->id, [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // تحديث عدد الطلاب
+            $group->increment('students_count');
+
+            DB::commit();
+
+            // إرجاع بيانات الطالب المضاف
+            $studentData = [
+                'id'              => $student->id,
+                'name'            => $student->user->name ?? 'غير محدد',
+                'email'           => $student->user->email ?? '',
+                'student_id'      => $student->student_id,
+                'phone'           => $student->phone,
+                'birth_date'      => $student->birth_date,
+                'address'         => $student->address,
+                'enrollment_date' => now()->format('Y-m-d'),
+                'is_active'       => $student->is_active,
+            ];
+
+            return response()->json([
+                'success'   => true,
+                'message'   => 'تم إضافة الطالب للمجموعة بنجاح',
+                'student'   => $studentData,
+                'new_count' => $group->fresh()->students_count,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في إضافة الطالب: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -738,426 +703,21 @@ class AdminController extends Controller
         }
     }
 
-// إضافة هذه الدوال إلى AdminController
-
-/**
- * جلب جميع المواد المتاحة
- */
-    public function getAvailableSubjects(Request $request)
-    {
-        try {
-            $gradeLevel = $request->get('grade_level');
-
-            $query = Subject::active();
-
-            if ($gradeLevel) {
-                $query->where('grade_level', $gradeLevel);
-            }
-
-            $subjects = $query->get()->map(function ($subject) {
-                return [
-                    'id'          => $subject->id,
-                    'name'        => $subject->name,
-                    'grade_level' => $subject->grade_level,
-                    'description' => $subject->description,
-                ];
-            });
-
-            return response()->json([
-                'success'  => true,
-                'subjects' => $subjects,
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في جلب المواد: ' . $e->getMessage(),
-            ], 500);
-        }
-
-    }
-
-/**
- * جلب مواد المجموعة مع تفاصيل المدرسين
- */
-    public function getGroupSubjects(Group $group)
-    {
-        try {
-            $groupSubjects = $group->groupSubjects()
-                ->with(['subject', 'teacher.user'])
-                ->get()
-                ->map(function ($groupSubject) {
-                    return [
-                        'id'           => $groupSubject->id,
-                        'subject_id'   => $groupSubject->subject_id,
-                        'subject_name' => $groupSubject->subject_name,
-                        'teacher_id'   => $groupSubject->teacher_id,
-                        'teacher_name' => $groupSubject->teacher_name,
-                        'is_active'    => $groupSubject->is_active,
-                    ];
-                });
-
-            // جلب المواد المتاحة للإضافة
-            $availableSubjects = Subject::active()
-                ->where('grade_level', $group->grade_level)
-                ->whereNotIn('id', $groupSubjects->pluck('subject_id'))
-                ->get()
-                ->map(function ($subject) {
-                    return [
-                        'id'          => $subject->id,
-                        'name'        => $subject->name,
-                        'description' => $subject->description,
-                    ];
-                });
-
-            // جلب المدرسين المتاحين
-            $availableTeachers = Teacher::with('user')
-                ->whereHas('user', function ($query) {
-                    $query->where('is_active', true);
-                })
-                ->get()
-                ->map(function ($teacher) {
-                    return [
-                        'id'             => $teacher->id,
-                        'name'           => $teacher->user->name,
-                        'email'          => $teacher->user->email,
-                        'specialization' => $teacher->specialization,
-                    ];
-                });
-
-            return response()->json([
-                'success'            => true,
-                'group_subjects'     => $groupSubjects,
-                'available_subjects' => $availableSubjects,
-                'available_teachers' => $availableTeachers,
-                'group_info'         => [
-                    'id'          => $group->id,
-                    'name'        => $group->name,
-                    'grade_level' => $group->grade_level,
-                ],
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في جلب مواد المجموعة: ' . $e->getMessage(),
-            ], 500);
-        }
-
-    }
-
-/**
- * إضافة مادة للمجموعة
- */
-    public function addSubjectToGroup(Request $request, Group $group)
-    {
-        $validator = Validator::make($request->all(), [
-            'subject_id' => 'required|exists:subjects,id',
-            'teacher_id' => 'nullable|exists:teachers,id',
-            'is_active'  => 'boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'بيانات غير صحيحة',
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
-
-        try {
-            // التحقق من أن المادة غير مرتبطة بالمجموعة مسبقاً
-            $exists = GroupSubject::where('group_id', $group->id)
-                ->where('subject_id', $request->subject_id)
-                ->exists();
-
-            if ($exists) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'المادة مرتبطة بالمجموعة مسبقاً',
-                ], 400);
-            }
-
-            DB::beginTransaction();
-
-            $groupSubject = GroupSubject::create([
-                'group_id'   => $group->id,
-                'subject_id' => $request->subject_id,
-                'teacher_id' => $request->teacher_id,
-                'schedule'   => null, // بدون جدولة
-                'is_active'  => $request->boolean('is_active', true),
-            ]);
-
-            DB::commit();
-
-            // إرجاع البيانات المحدثة
-            $groupSubject->load(['subject', 'teacher.user']);
-
-            return response()->json([
-                'success'       => true,
-                'message'       => 'تم إضافة المادة للمجموعة بنجاح',
-                'group_subject' => [
-                    'id'           => $groupSubject->id,
-                    'subject_id'   => $groupSubject->subject_id,
-                    'subject_name' => $groupSubject->subject_name,
-                    'teacher_id'   => $groupSubject->teacher_id,
-                    'teacher_name' => $groupSubject->teacher_name,
-                    'is_active'    => $groupSubject->is_active,
-                ],
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في إضافة المادة: ' . $e->getMessage(),
-            ], 500);
-        }
-
-    }
-
-/**
- * تحديث مادة في المجموعة
- */
-    public function updateGroupSubject(Request $request, Group $group, GroupSubject $groupSubject)
-    {
-        $validator = Validator::make($request->all(), [
-            'teacher_id' => 'nullable|exists:teachers,id',
-            'is_active'  => 'boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'بيانات غير صحيحة',
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
-
-        try {
-            // التحقق من أن GroupSubject ينتمي للمجموعة الصحيحة
-            if ($groupSubject->group_id !== $group->id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'المادة غير مرتبطة بهذه المجموعة',
-                ], 400);
-            }
-
-            DB::beginTransaction();
-
-            $groupSubject->update([
-                'teacher_id' => $request->teacher_id,
-                'is_active'  => $request->boolean('is_active', $groupSubject->is_active),
-            ]);
-
-            DB::commit();
-
-            $groupSubject->load(['subject', 'teacher.user']);
-
-            return response()->json([
-                'success'       => true,
-                'message'       => 'تم تحديث المادة بنجاح',
-                'group_subject' => [
-                    'id'           => $groupSubject->id,
-                    'subject_id'   => $groupSubject->subject_id,
-                    'subject_name' => $groupSubject->subject_name,
-                    'teacher_id'   => $groupSubject->teacher_id,
-                    'teacher_name' => $groupSubject->teacher_name,
-                    'is_active'    => $groupSubject->is_active,
-                ],
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في تحديث المادة: ' . $e->getMessage(),
-            ], 500);
-        }
-
-    }
-
-/**
- * إزالة مادة من المجموعة
- */
-    public function removeSubjectFromGroup(Group $group, GroupSubject $groupSubject)
-    {
-        try {
-            // التحقق من أن GroupSubject ينتمي للمجموعة الصحيحة
-            if ($groupSubject->group_id !== $group->id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'المادة غير مرتبطة بهذه المجموعة',
-                ], 400);
-            }
-
-            DB::beginTransaction();
-
-            $subjectName = $groupSubject->subject_name;
-            $groupSubject->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => "تم إزالة مادة {$subjectName} من المجموعة بنجاح",
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في إزالة المادة: ' . $e->getMessage(),
-            ], 500);
-        }
-
-    }
-
-/**
- * نسخ مواد من مجموعة لأخرى
- */
-    public function copySubjectsBetweenGroups(Request $request, Group $sourceGroup)
-    {
-        $validator = Validator::make($request->all(), [
-            'target_group_id' => 'required|exists:groups,id',
-            'subject_ids'     => 'required|array',
-            'subject_ids.*'   => 'exists:subjects,id',
-            'copy_teachers'   => 'boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'بيانات غير صحيحة',
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
-
-        try {
-            $targetGroup = Group::findOrFail($request->target_group_id);
-
-            DB::beginTransaction();
-
-            $copiedCount  = 0;
-            $skippedCount = 0;
-
-            foreach ($request->subject_ids as $subjectId) {
-                // التحقق من عدم وجود المادة في المجموعة المستهدفة
-                $exists = GroupSubject::where('group_id', $targetGroup->id)
-                    ->where('subject_id', $subjectId)
-                    ->exists();
-
-                if ($exists) {
-                    $skippedCount++;
-                    continue;
-                }
-
-                // جلب بيانات المادة من المجموعة المصدر
-                $sourceGroupSubject = GroupSubject::where('group_id', $sourceGroup->id)
-                    ->where('subject_id', $subjectId)
-                    ->first();
-
-                if (! $sourceGroupSubject) {
-                    continue;
-                }
-
-                // إنشاء المادة في المجموعة المستهدفة
-                GroupSubject::create([
-                    'group_id'   => $targetGroup->id,
-                    'subject_id' => $subjectId,
-                    'teacher_id' => $request->boolean('copy_teachers') ? $sourceGroupSubject->teacher_id : null,
-                    'schedule'   => null, // بدون جدولة
-                    'is_active'  => true,
-                ]);
-
-                $copiedCount++;
-            }
-
-            DB::commit();
-
-            $message = "تم نسخ {$copiedCount} مادة بنجاح";
-            if ($skippedCount > 0) {
-                $message .= " (تم تخطي {$skippedCount} مادة موجودة مسبقاً)";
-            }
-
-            return response()->json([
-                'success'       => true,
-                'message'       => $message,
-                'copied_count'  => $copiedCount,
-                'skipped_count' => $skippedCount,
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في نسخ المواد: ' . $e->getMessage(),
-            ], 500);
-        }
-
-    }
-
     // ======================== بقية الوظائف الموجودة ========================
 
     public function approveAdmission(Request $request, Admission $admission)
     {
         $request->validate([
-            'group_id' => 'nullable|exists:groups,id',
+            'group_id' => 'required|exists:groups,id',
         ]);
 
         try {
-            DB::beginTransaction();
-
-            if ($request->group_id) {
-                // الآدمن اختار مجموعة محددة
-                $group = Group::findOrFail($request->group_id);
-            } else {
-                // اختيار تلقائي للمجموعة المناسبة
-                $group = Group::getAvailableGroups($admission->grade_level)->first();
-
-                if (! $group) {
-                    // إنشاء شعبة جديدة
-                    $group = $this->createNewSectionForGrade($admission->grade_level);
-                }
-            }
-
-            // تحويل الطلب إلى طالب
-            $student = $admission->convertToStudent();
-
-            // إضافة الطالب للمجموعة
-            $group->addStudent($student);
-
-            DB::commit();
-
-            return back()->with('success', 'تم قبول طلب الانتساب وإضافة الطالب للمجموعة');
-
+            $student = $admission->convertToStudent($request->group_id);
+            NotificationService::notifyAdmissionApproved($student);
+            return back()->with('success', 'تم قبول طلب الانتساب بنجاح وإرسال إشعار لولي الأمر');
         } catch (\Exception $e) {
-            DB::rollBack();
             return back()->with('error', 'خطأ في معالجة الطلب: ' . $e->getMessage());
         }
-
-    }
-
-    private function createNewSectionForGrade($gradeLevel)
-    {
-        // منطق إنشاء شعبة جديدة
-        $latestSection = Group::where('grade_level', $gradeLevel)
-            ->orderBy('section_number', 'desc')
-            ->first();
-
-        $newSectionNumber = $latestSection ? $latestSection->section_number + 1 : 1;
-        $sectionLetter    = $this->getSectionLetter($newSectionNumber);
-
-        return Group::create([
-            'name'           => $gradeLevel . ' - الشعبة ' . $sectionLetter,
-            'grade_level'    => $gradeLevel,
-            'section'        => $sectionLetter,
-            'section_number' => $newSectionNumber,
-            'students_count' => 0,
-            'max_capacity'   => 20,
-            'is_active'      => true,
-            'description'    => 'شعبة جديدة لطلاب ' . $gradeLevel,
-        ]);
     }
 
     public function rejectAdmission(Request $request, Admission $admission)
@@ -1406,9 +966,8 @@ class AdminController extends Controller
      */
     private function getSectionLetter($sectionNumber)
     {
-        $letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'];
+        $letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي', 'ك', 'ل', 'م', 'ن'];
         return $letters[($sectionNumber - 1) % count($letters)];
-
     }
 
     /**

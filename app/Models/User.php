@@ -13,7 +13,9 @@ class User extends Authenticatable
     use HasApiTokens, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'password', 'role', 'phone',
+        'name', 'email', 'password', 'is_active', 'role',
+        'phone', 'national_id', 'birth_date', 'parent_id',
+
     ];
 
     protected $hidden = [
@@ -21,6 +23,8 @@ class User extends Authenticatable
     ];
 
     protected $casts = [
+        'is_active'         => 'boolean',
+        'birth_date'        => 'date',
         'email_verified_at' => 'datetime',
         'password'          => 'hashed',
     ];
@@ -29,6 +33,12 @@ class User extends Authenticatable
     public function student()
     {
         return $this->hasOne(Student::class);
+    }
+
+    // Scope للمستخدمين النشطين
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 
     public function teacher()

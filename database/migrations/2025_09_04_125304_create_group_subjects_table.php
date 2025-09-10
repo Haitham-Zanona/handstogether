@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -16,7 +17,7 @@ return new class extends Migration
             $table->foreignId('group_id')->constrained()->cascadeOnDelete();
             $table->foreignId('subject_id')->constrained()->cascadeOnDelete();
             $table->foreignId('teacher_id')->nullable()->constrained()->nullOnDelete();
-            $table->json('schedule')->nullable(); // مواعيد المادة داخل المجموعة
+            $table->json('schedule')->nullable();        // مواعيد المادة داخل المجموعة
             $table->boolean('is_active')->default(true); // حالة المادة في المجموعة
             $table->timestamps();
 
@@ -30,7 +31,6 @@ return new class extends Migration
         $this->linkGroupsWithSubjects();
     }
 
-
     /**
      * ربط المجموعات بالمواد المناسبة لمراحلها
      */
@@ -38,24 +38,24 @@ return new class extends Migration
     {
         // الحصول على كل المجموعات
         $groups = DB::table('groups')->get();
-        
+
         foreach ($groups as $group) {
             // الحصول على المواد المناسبة لهذه المرحلة
             $subjects = DB::table('subjects')
                 ->where('grade_level', $group->grade_level)
                 ->get();
-                
+
             foreach ($subjects as $subject) {
                 DB::table('group_subjects')->insert([
-                    'group_id' => $group->id,
+                    'group_id'   => $group->id,
                     'subject_id' => $subject->id,
                     'teacher_id' => null, // سيتم تعيين المدرسين لاحقاً
-                    'schedule' => json_encode([
-                        'days' => [], // أيام الأسبوع
-                        'times' => [], // أوقات الحصص
-                        'duration' => 45 // مدة الحصة بالدقائق
+                    'schedule'   => json_encode([
+                        'days'     => [], // أيام الأسبوع
+                        'times'    => [], // أوقات الحصص
+                        'duration' => 45, // مدة الحصة بالدقائق
                     ]),
-                    'is_active' => true,
+                    'is_active'  => true,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
