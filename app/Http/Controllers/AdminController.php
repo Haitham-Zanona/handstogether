@@ -6,14 +6,18 @@ use App\Models\Attendance;
 use App\Models\Group;
 use App\Models\GroupSubject;
 use App\Models\Lecture;
+use App\Models\LectureSeries;
 use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Teacher;
 use App\Services\NotificationService;
+use App\Services\SeriesGenerator;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
@@ -700,6 +704,60 @@ class AdminController extends Controller
     }
 
     /**
+     * جلب مواد المجموعة للمحاضرات (فقط المواد النشطة المرتبطة بالمجموعة)
+     */
+    public function getGroupSubjectsForLectures(Request $request)
+    {
+        try {
+            $groupId = $request->get('group_id');
+
+            if (! $groupId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'معرف المجموعة مطلوب',
+                ]);
+            }
+
+            // جلب المواد المرتبطة بالمجموعة من جدول الربط
+            $subjects = DB::table('group_subjects')
+                ->join('subjects', 'group_subjects.subject_id', '=', 'subjects.id')
+                ->where('group_subjects.group_id', $groupId)
+                ->where('group_subjects.is_active', true)
+                ->select(
+                    'subjects.id',
+                    'subjects.name',
+                    'subjects.name as display_name',
+                    'subjects.description'
+                )
+                ->get();
+
+            // لوغ للتصحيح
+            Log::info('Group subjects loaded', [
+                'group_id'       => $groupId,
+                'subjects_count' => $subjects->count(),
+            ]);
+
+            return response()->json([
+                'success'  => true,
+                'subjects' => $subjects,
+                'message'  => "تم تحميل {$subjects->count()} مادة للمجموعة",
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error loading group subjects', [
+                'group_id' => $request->get('group_id'),
+                'error'    => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+
+    }
+
+    /**
      * جلب المجموعات المتاحة لنقل الطلاب
      */
     public function getAvailableGroupsForTransfer(Request $request)
@@ -756,10 +814,11 @@ class AdminController extends Controller
 
             $subjects = $query->get()->map(function ($subject) {
                 return [
-                    'id'          => $subject->id,
-                    'name'        => $subject->name,
-                    'grade_level' => $subject->grade_level,
-                    'description' => $subject->description,
+                    'id'           => $subject->id,
+                    'name'         => $subject->name,
+                    'grade_level'  => $subject->grade_level,
+                    'description'  => $subject->description,
+                    'display_name' => $subject->name . ' - ' . $subject->grade_level, // إضافة جديدة
                 ];
             });
 
@@ -780,67 +839,51 @@ class AdminController extends Controller
 /**
  * جلب مواد المجموعة مع تفاصيل المدرسين
  */
-    public function getGroupSubjects(Group $group)
+    public function getGroupSubjects(Request $request)
     {
         try {
-            $groupSubjects = $group->groupSubjects()
-                ->with(['subject', 'teacher.user'])
-                ->get()
-                ->map(function ($groupSubject) {
-                    return [
-                        'id'           => $groupSubject->id,
-                        'subject_id'   => $groupSubject->subject_id,
-                        'subject_name' => $groupSubject->subject_name,
-                        'teacher_id'   => $groupSubject->teacher_id,
-                        'teacher_name' => $groupSubject->teacher_name,
-                        'is_active'    => $groupSubject->is_active,
-                    ];
-                });
+            $groupId = $request->get('group_id');
 
-            // جلب المواد المتاحة للإضافة
-            $availableSubjects = Subject::active()
-                ->where('grade_level', $group->grade_level)
-                ->whereNotIn('id', $groupSubjects->pluck('subject_id'))
-                ->get()
-                ->map(function ($subject) {
-                    return [
-                        'id'          => $subject->id,
-                        'name'        => $subject->name,
-                        'description' => $subject->description,
-                    ];
-                });
+            if (! $groupId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'معرف المجموعة مطلوب',
+                ]);
+            }
 
-            // جلب المدرسين المتاحين
-            $availableTeachers = Teacher::with('user')
-                ->whereHas('user', function ($query) {
-                    $query->where('is_active', true);
-                })
-                ->get()
-                ->map(function ($teacher) {
-                    return [
-                        'id'             => $teacher->id,
-                        'name'           => $teacher->user->name,
-                        'email'          => $teacher->user->email,
-                        'specialization' => $teacher->specialization,
-                    ];
-                });
+            // جلب المواد المرتبطة بالمجموعة من جدول الربط
+            $subjects = DB::table('group_subjects')
+                ->join('subjects', 'group_subjects.subject_id', '=', 'subjects.id')
+                ->where('group_subjects.group_id', $groupId)
+                ->where('group_subjects.is_active', true)
+                ->select(
+                    'subjects.id',
+                    'subjects.name',
+                    'subjects.name as display_name',
+                    'subjects.description'
+                )
+                ->get();
+
+            Log::info('Group subjects loaded', [
+                'group_id'       => $groupId,
+                'subjects_count' => $subjects->count(),
+            ]);
 
             return response()->json([
-                'success'            => true,
-                'group_subjects'     => $groupSubjects,
-                'available_subjects' => $availableSubjects,
-                'available_teachers' => $availableTeachers,
-                'group_info'         => [
-                    'id'          => $group->id,
-                    'name'        => $group->name,
-                    'grade_level' => $group->grade_level,
-                ],
+                'success'  => true,
+                'subjects' => $subjects,
+                'message'  => "تم تحميل {$subjects->count()} مادة للمجموعة",
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Error loading group subjects', [
+                'group_id' => $request->get('group_id'),
+                'error'    => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ في جلب مواد المجموعة: ' . $e->getMessage(),
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
             ], 500);
         }
 
@@ -1272,36 +1315,6 @@ class AdminController extends Controller
         }
     }
 
-    public function getCalendarData()
-    {
-        $lectures = Lecture::with(['teacher.user', 'group'])
-            ->get()
-            ->map(function ($lecture) {
-                return [
-                    'id'                 => $lecture->id,
-                    'title'              => $lecture->title,
-                    'date'               => $lecture->date->format('Y-m-d'),
-                    'start_time'         => $lecture->start_time->format('H:i'),
-                    'end_time'           => $lecture->end_time->format('H:i'),
-                    'description'        => $lecture->description ?? '',
-                    'teacher'            => [
-                        'user' => [
-                            'name' => $lecture->teacher->user->name,
-                        ],
-                    ],
-                    'group'              => [
-                        'id'   => $lecture->group->id,
-                        'name' => $lecture->group->name,
-                    ],
-                    'is_today'           => $lecture->is_today,
-                    'has_started'        => $lecture->has_started,
-                    'attendance_summary' => $lecture->getAttendanceSummary(),
-                ];
-            });
-
-        return response()->json($lectures);
-    }
-
     public function attendance()
     {
         $groups = Group::with([
@@ -1358,23 +1371,725 @@ class AdminController extends Controller
         return back()->with('success', 'تم تحديث حالة الدفع وإرسال إشعار لولي الأمر');
     }
 
-    public function createLecture(Request $request)
+    // public function createLecture(Request $request)
+    // {
+    //     $request->validate([
+    //         'title'       => 'required|string|max:255',
+    //         'date'        => 'required|date|after_or_equal:today',
+    //         'start_time'  => 'required|date_format:H:i',
+    //         'end_time'    => 'required|date_format:H:i|after:start_time',
+    //         'teacher_id'  => 'required|exists:teachers,id',
+    //         'group_id'    => 'required|exists:groups,id',
+    //         'description' => 'nullable|string|max:1000',
+    //     ]);
+
+    //     $lecture = Lecture::create($request->all());
+
+    //     NotificationService::notifyNewLecture($lecture);
+
+    //     return back()->with('success', 'تم إضافة المحاضرة وإرسال إشعارات للطلاب وأولياء الأمور');
+    // }
+
+    // ========== إدارة المحاضرات والجدولة ==========
+
+/**
+ * عرض صفحة المحاضرات الرئيسية
+ */
+    public function lecturesIndex()
     {
-        $request->validate([
+        // إحصائيات سريعة
+        $stats = [
+            'total_lectures'      => Lecture::count(),
+            'today_lectures'      => Lecture::whereDate('date', today())->count(),
+            'this_week_lectures'  => Lecture::whereBetween('date', [
+                now()->startOfWeek(),
+                now()->endOfWeek(),
+            ])->count(),
+            'this_month_lectures' => Lecture::whereMonth('date', now()->month)->count(),
+            'active_series'       => $this->getActiveSeriesCount(),
+            'upcoming_exams'      => $this->getUpcomingExams()->count(),
+        ];
+
+        return view('admin.lectures.index', compact('stats'));
+    }
+
+/**
+ * جلب بيانات المحاضرات للتقويم
+ */
+    public function getCalendarData(Request $request)
+    {
+        try {
+            $start = $request->get('start');
+            $end   = $request->get('end');
+            $view  = $request->get('view', 'month');
+
+            // ✅ التحقق من وجود محاضرات أولاً
+            $lecturesCount = Lecture::count();
+            if ($lecturesCount === 0) {
+                return response()->json([]);
+            }
+
+            $query = Lecture::with(['teacher.user', 'group', 'subject']);
+
+            if ($start && $end) {
+                $query->whereBetween('date', [$start, $end]);
+            }
+
+            $lectures = $query->get()->map(function ($lecture) {
+                // ✅ معالجة آمنة للأوقات
+                $startTime = '09:00:00';
+                $endTime   = '10:30:00';
+
+                if ($lecture->start_time) {
+                    $startTime = is_string($lecture->start_time) ?
+                    $lecture->start_time . ':00' :
+                    $lecture->start_time->format('H:i:s');
+                }
+
+                if ($lecture->end_time) {
+                    $endTime = is_string($lecture->end_time) ?
+                    $lecture->end_time . ':00' :
+                    $lecture->end_time->format('H:i:s');
+                }
+
+                return [
+                    'id'              => $lecture->id,
+                    'title'           => $lecture->title ?? 'محاضرة بدون عنوان',
+                    'start'           => $lecture->date->format('Y-m-d') . 'T' . $startTime,
+                    'end'             => $lecture->date->format('Y-m-d') . 'T' . $endTime,
+                    // ✅ إصلاح ألوان ثابتة بدلاً من دوال مفقودة
+                    'backgroundColor' => $this->getEventColor($lecture->type ?? 'lecture'),
+                    'borderColor'     => $this->getEventBorderColor($lecture->status ?? 'scheduled'),
+                    'extendedProps'   => [
+                        'type'           => $lecture->type ?? 'lecture',
+                        'status'         => $lecture->status ?? 'scheduled',
+                        'teacher_name'   => $lecture->teacher && $lecture->teacher->user ? $lecture->teacher->user->name : 'غير محدد',
+                        'group_name'     => $lecture->group ? $lecture->group->name : 'غير محدد',
+                        'subject_name'   => $lecture->subject ? $lecture->subject->name : '',
+                        'students_count' => $lecture->group ? $lecture->group->students_count : 0,
+                        'series_id'      => $lecture->series_id ?? null,
+                        'description'    => $lecture->description ?? '',
+                    ],
+                ];
+            });
+
+            return response()->json($lectures);
+
+        } catch (\Exception $e) {
+            Log::error('Error in getCalendarData', [
+                'error' => $e->getMessage(),
+                'line'  => $e->getLine(),
+            ]);
+
+            // ✅ إرجاع مصفوفة فارغة بدلاً من 500
+            return response()->json([]);
+        }
+
+        // return \App\Http\Resources\LectureResourceCalendar::fetchFiltered($request);
+
+    }
+
+    private function getEventColor($type)
+    {
+        return match ($type) {
+            'final_exam' => '#DC3545',
+            'exam'       => '#EE8100',
+            'review'     => '#28A745',
+            'activity'   => '#FFC107',
+            default      => '#2778E5'
+        };
+    }
+
+    private function getEventBorderColor($status)
+    {
+        return match ($status) {
+            'cancelled'   => '#6C757D',
+            'rescheduled' => '#6F42C1',
+            'completed'   => '#198754',
+            default       => '#2778E5'
+        };
+    }
+
+/**
+ * جلب بيانات المحاضرات للجدول
+ */
+    public function getLecturesData(Request $request)
+    {
+        try {
+            $lectures = Lecture::with(['teacher.user', 'group', 'subject'])
+                ->when($request->get('date_from'), function ($query) use ($request) {
+                    return $query->whereDate('date', '>=', $request->get('date_from'));
+                })
+                ->when($request->get('date_to'), function ($query) use ($request) {
+                    return $query->whereDate('date', '<=', $request->get('date_to'));
+                })
+                ->when($request->get('group_id'), function ($query) use ($request) {
+                    return $query->where('group_id', $request->get('group_id'));
+                })
+                ->when($request->get('teacher_id'), function ($query) use ($request) {
+                    return $query->where('teacher_id', $request->get('teacher_id'));
+                })
+                ->orderBy('date', 'desc')
+                ->orderBy('start_time', 'asc')
+                ->get()
+                ->map(function ($lecture) {
+                    return [
+                        'id'               => $lecture->id,
+                        'title'            => $lecture->title,
+                        'date'             => $lecture->date->format('Y-m-d'),
+                        // ✅ إصلاح معالجة الوقت
+                        'start_time'       => $lecture->start_time ?
+                        (is_string($lecture->start_time) ?
+                            $lecture->start_time :
+                            $lecture->start_time->format('H:i')) : '00:00',
+                        'end_time'         => $lecture->end_time ?
+                        (is_string($lecture->end_time) ?
+                            $lecture->end_time :
+                            $lecture->end_time->format('H:i')) : '23:59',
+                        // ✅ إصلاح معالجة العلاقات
+                        'teacher_name'     => $lecture->teacher && $lecture->teacher->user ?
+                        $lecture->teacher->user->name : 'غير محدد',
+                        'group_name'       => $lecture->group ? $lecture->group->name : 'غير محدد',
+                        'subject_name'     => $lecture->subject ? $lecture->subject->name : '',
+                        'students_count'   => $lecture->group ? $lecture->group->students_count : 0,
+                        'status'           => $lecture->status ?? 'scheduled',
+                        'type'             => $lecture->type ?? 'lecture',
+                        'series_id'        => $lecture->series_id ?? null,
+                        'description'      => $lecture->description,
+                        'attendance_count' => $lecture->attendance()->where('status', 'present')->count(),
+                    ];
+                });
+
+            return response()->json([
+                'success'  => true,
+                'lectures' => $lectures,
+            ]);
+
+        } catch (\Exception $e) {
+            // ✅ إضافة لوغ للتصحيح
+            Log::error('Error in getLecturesData', [
+                'error' => $e->getMessage(),
+                'line'  => $e->getLine(),
+                'file'  => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في جلب بيانات المحاضرات: ' . $e->getMessage(),
+            ], 500);
+        }
+
+    }
+
+/**
+ * إنشاء محاضرة جديدة
+ */
+    public function storeLecture(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
             'title'       => 'required|string|max:255',
             'date'        => 'required|date|after_or_equal:today',
             'start_time'  => 'required|date_format:H:i',
             'end_time'    => 'required|date_format:H:i|after:start_time',
             'teacher_id'  => 'required|exists:teachers,id',
             'group_id'    => 'required|exists:groups,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'type'        => 'in:lecture,exam,review,activity',
             'description' => 'nullable|string|max:1000',
         ]);
 
-        $lecture = Lecture::create($request->all());
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات غير صحيحة',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
 
-        NotificationService::notifyNewLecture($lecture);
+        try {
+            DB::beginTransaction();
 
-        return back()->with('success', 'تم إضافة المحاضرة وإرسال إشعارات للطلاب وأولياء الأمور');
+            // التحقق من تضارب الأوقات
+            $conflicts = $this->checkTimeConflicts(
+                $request->teacher_id,
+                $request->date,
+                $request->start_time,
+                $request->end_time
+            );
+
+            if ($conflicts->count() > 0) {
+                return response()->json([
+                    'success'   => false,
+                    'message'   => 'يوجد تضارب في الأوقات مع محاضرات أخرى للمدرس',
+                    'conflicts' => $conflicts,
+                ], 400);
+            }
+
+            $lecture = Lecture::create([
+                'title'       => $request->title,
+                'date'        => $request->date,
+                'start_time'  => $request->start_time,
+                'end_time'    => $request->end_time,
+                'teacher_id'  => $request->teacher_id,
+                'group_id'    => $request->group_id,
+                'subject_id'  => $request->subject_id,
+                'type'        => $request->type ?? 'lecture',
+                'status'      => 'scheduled',
+                'description' => $request->description,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إنشاء المحاضرة بنجاح',
+                'lecture' => $lecture->load(['teacher.user', 'group', 'subject']),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في إنشاء المحاضرة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+/**
+ * إنشاء سلسلة محاضرات متكررة
+ */
+    // public function createLectureSeries(Request $request)
+    // {
+    //     $validator = Validator::make($request->all(), [
+    //         'title'       => 'required|string|max:255',
+    //         'start_date'  => 'required|date|after_or_equal:today',
+    //         'start_time'  => 'required|date_format:H:i',
+    //         'end_time'    => 'required|date_format:H:i|after:start_time',
+    //         'teacher_id'  => 'required|exists:teachers,id',
+    //         'group_id'    => 'required|exists:groups,id',
+    //         'subject_id'  => 'nullable|exists:subjects,id',
+    //         'days'        => 'required|array|min:1',
+    //         'days.*'      => 'in:0,1,2,3,4,5,6', // أيام الأسبوع
+    //         'description' => 'nullable|string|max:1000',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'بيانات غير صحيحة',
+    //             'errors'  => $validator->errors(),
+    //         ], 422);
+    //     }
+
+    //     try {
+    //         DB::beginTransaction();
+
+    //         // إنشاء معرف فريد للسلسلة
+    //         $seriesId = 'series_' . time() . '_' . $request->group_id;
+
+    //         // إنشاء المحاضرات للأسابيع القادمة (حتى 52 أسبوع)
+    //         $startDate       = Carbon::parse($request->start_date);
+    //         $createdLectures = [];
+
+    //         for ($week = 0; $week < 52; $week++) {
+    //             foreach ($request->days as $dayOfWeek) {
+    //                 $lectureDate = $startDate->copy()->addWeeks($week)->startOfWeek()->addDays($dayOfWeek);
+
+    //                 // تخطي التواريخ السابقة
+    //                 if ($lectureDate->lt(now()->startOfDay())) {
+    //                     continue;
+    //                 }
+
+    //                 // التحقق من تضارب الأوقات
+    //                 $conflicts = $this->checkTimeConflicts(
+    //                     $request->teacher_id,
+    //                     $lectureDate->format('Y-m-d'),
+    //                     $request->start_time,
+    //                     $request->end_time
+    //                 );
+
+    //                 if ($conflicts->count() === 0) {
+    //                     $lecture = Lecture::create([
+    //                         'title'       => $request->title,
+    //                         'date'        => $lectureDate->format('Y-m-d'),
+    //                         'start_time'  => $request->start_time,
+    //                         'end_time'    => $request->end_time,
+    //                         'teacher_id'  => $request->teacher_id,
+    //                         'group_id'    => $request->group_id,
+    //                         'subject_id'  => $request->subject_id,
+    //                         'type'        => 'lecture',
+    //                         'status'      => 'scheduled',
+    //                         'series_id'   => $seriesId,
+    //                         'description' => $request->description,
+    //                     ]);
+
+    //                     $createdLectures[] = $lecture;
+    //                 }
+    //             }
+    //         }
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'success'        => true,
+    //             'message'        => "تم إنشاء سلسلة من {count($createdLectures)} محاضرة بنجاح",
+    //             'series_id'      => $seriesId,
+    //             'lectures_count' => count($createdLectures),
+    //         ]);
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'حدث خطأ في إنشاء السلسلة: ' . $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+    public function createLectureSeries(Request $request, SeriesGenerator $generator)
+    {
+        $validator = Validator::make($request->all(), [
+            'title'       => 'required|string|max:255',
+            'start_date'  => 'required|date|after_or_equal:today',
+            'start_time'  => 'required|date_format:H:i',
+            'end_time'    => 'required|date_format:H:i|after:start_time',
+            'teacher_id'  => 'required|exists:teachers,id',
+            'group_id'    => 'required|exists:groups,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'days'        => 'required|array|min:1',
+            'days.*'      => 'in:0,1,2,3,4,5,6',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات غير صحيحة',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // ✅ تحويل التاريخ إلى Carbon instance أولاً
+            $startDate = Carbon::parse($request->start_date);
+            $endDate   = $request->end_date ? Carbon::parse($request->end_date) : $startDate->copy()->addWeeks(52);
+
+            // إنشاء السلسلة
+            $series = LectureSeries::create([
+                'title'      => $request->title,
+                'start_date' => $startDate, // ✅ Carbon instance
+                'end_date'   => $endDate,   // ✅ Carbon instance
+                'start_time' => $request->start_time,
+                'end_time'   => $request->end_time,
+                'teacher_id' => $request->teacher_id,
+                'group_id'   => $request->group_id,
+                'subject_id' => $request->subject_id,
+            ]);
+
+            // إضافة أيام الأسبوع للسلسلة
+            foreach ($request->days as $day) {
+                $series->days()->create(['day_of_week' => $day]);
+            }
+
+            // توليد المحاضرات باستخدام Service
+            $generator->generateLectures($series);
+
+            DB::commit();
+
+            return response()->json([
+                'success'   => true,
+                'message'   => 'تم إنشاء سلسلة المحاضرات والمحاضرات المرتبطة بها بنجاح',
+                'series_id' => $series->id,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            // ✅ إضافة لوغ للتصحيح
+            Log::error('Error creating lecture series', [
+                'error'        => $e->getMessage(),
+                'request_data' => $request->all(),
+                'trace'        => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في إنشاء السلسلة: ' . $e->getMessage(),
+            ], 500);
+        }
+
+    }
+
+/**
+ * إنشاء امتحان نهائي (ينهي السلسلة)
+ */
+    public function createFinalExam(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'series_id'   => 'required|string',
+            'title'       => 'required|string|max:255',
+            'date'        => 'required|date|after:today',
+            'start_time'  => 'required|date_format:H:i',
+            'duration'    => 'required|integer|min:30|max:480', // بالدقائق
+            'teacher_id'  => 'required|exists:teachers,id',
+            'group_id'    => 'required|exists:groups,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'room'        => 'nullable|string|max:100',
+            'total_marks' => 'required|integer|min:1|max:1000',
+            'notes'       => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات غير صحيحة',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // حساب وقت انتهاء الامتحان
+            $startTime = Carbon::parse($request->start_time);
+            $endTime   = $startTime->copy()->addMinutes($request->duration);
+
+            // إنشاء الامتحان النهائي
+            $finalExam = Lecture::create([
+                'title'       => $request->title,
+                'date'        => $request->date,
+                'start_time'  => $request->start_time,
+                'end_time'    => $endTime->format('H:i'),
+                'teacher_id'  => $request->teacher_id,
+                'group_id'    => $request->group_id,
+                'subject_id'  => $request->subject_id,
+                'type'        => 'final_exam',
+                'status'      => 'scheduled',
+                'series_id'   => $request->series_id,
+                'room'        => $request->room,
+                'total_marks' => $request->total_marks,
+                'description' => $request->notes,
+            ]);
+
+            // حذف المحاضرات المتبقية في السلسلة بعد تاريخ الامتحان
+            Lecture::where('series_id', $request->series_id)
+                ->where('date', '>', $request->date)
+                ->where('type', '!=', 'final_exam')
+                ->delete();
+
+            // تحديث حالة السلسلة لتصبح "مكتملة"
+            Lecture::where('series_id', $request->series_id)
+                ->update(['series_status' => 'completed']);
+
+            DB::commit();
+
+            return response()->json([
+                'success'    => true,
+                'message'    => 'تم إنشاء الامتحان النهائي وإنهاء السلسلة بنجاح',
+                'final_exam' => $finalExam->load(['teacher.user', 'group', 'subject']),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في إنشاء الامتحان النهائي: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+/**
+ * تأجيل محاضرة
+ */
+    public function rescheduleLecture(Request $request, Lecture $lecture)
+    {
+        $validator = Validator::make($request->all(), [
+            'new_date'       => 'required|date|after_or_equal:today',
+            'new_start_time' => 'required|date_format:H:i',
+            'new_end_time'   => 'required|date_format:H:i|after:new_start_time',
+            'reason'         => 'required|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات غير صحيحة',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // التحقق من تضارب الأوقات الجديدة
+            $conflicts = $this->checkTimeConflicts(
+                $lecture->teacher_id,
+                $request->new_date,
+                $request->new_start_time,
+                $request->new_end_time,
+                $lecture->id
+            );
+
+            if ($conflicts->count() > 0) {
+                return response()->json([
+                    'success'   => false,
+                    'message'   => 'يوجد تضارب في الأوقات الجديدة',
+                    'conflicts' => $conflicts,
+                ], 400);
+            }
+
+            // حفظ البيانات القديمة
+            $oldData = [
+                'date'       => $lecture->date,
+                'start_time' => $lecture->start_time,
+                'end_time'   => $lecture->end_time,
+            ];
+
+            // تحديث المحاضرة
+            $lecture->update([
+                'date'                => $request->new_date,
+                'start_time'          => $request->new_start_time,
+                'end_time'            => $request->new_end_time,
+                'status'              => 'rescheduled',
+                'reschedule_reason'   => $request->reason,
+                'reschedule_old_data' => json_encode($oldData),
+                'rescheduled_at'      => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تأجيل المحاضرة بنجاح',
+                'lecture' => $lecture->fresh()->load(['teacher.user', 'group', 'subject']),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في تأجيل المحاضرة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+/**
+ * إلغاء محاضرة
+ */
+    public function cancelLecture(Request $request, Lecture $lecture)
+    {
+        $validator = Validator::make($request->all(), [
+            'reason' => 'required|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يرجى تحديد سبب الإلغاء',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $lecture->update([
+                'status'              => 'cancelled',
+                'cancellation_reason' => $request->reason,
+                'cancelled_at'        => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إلغاء المحاضرة بنجاح',
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في إلغاء المحاضرة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+// ========== وظائف مساعدة ==========
+
+/**
+ * التحقق من تضارب الأوقات
+ */
+    private function checkTimeConflicts($teacherId, $date, $startTime, $endTime, $excludeLectureId = null)
+    {
+        return Lecture::where('teacher_id', $teacherId)
+            ->whereDate('date', $date)
+            ->where('status', '!=', 'cancelled')
+            ->when($excludeLectureId, function ($query) use ($excludeLectureId) {
+                return $query->where('id', '!=', $excludeLectureId);
+            })
+            ->where(function ($query) use ($startTime, $endTime) {
+                $query->whereBetween('start_time', [$startTime, $endTime])
+                    ->orWhereBetween('end_time', [$startTime, $endTime])
+                    ->orWhere(function ($subQuery) use ($startTime, $endTime) {
+                        $subQuery->where('start_time', '<=', $startTime)
+                            ->where('end_time', '>=', $endTime);
+                    });
+            });
+    }
+
+/**
+ * تحديد لون المحاضرة حسب النوع
+ */
+    private function getLectureColor($lecture)
+    {
+        switch ($lecture->type) {
+            case 'final_exam':
+                return '#DC3545'; // أحمر للامتحانات النهائية
+            case 'exam':
+                return '#EE8100'; // برتقالي للامتحانات
+            case 'review':
+                return '#28A745'; // أخضر للمراجعة
+            case 'activity':
+                return '#FFC107'; // أصفر للأنشطة
+            default:
+                return '#2778E5'; // أزرق للمحاضرات العادية
+        }
+    }
+
+/**
+ * تحديد لون حدود المحاضرة حسب الحالة
+ */
+    private function getLectureBorderColor($lecture)
+    {
+        switch ($lecture->status) {
+            case 'cancelled':
+                return '#6C757D'; // رمادي للملغاة
+            case 'rescheduled':
+                return '#6F42C1'; // بنفسجي للمؤجلة
+            case 'completed':
+                return '#198754'; // أخضر داكن للمكتملة
+            default:
+                return $this->getLectureColor($lecture);
+        }
+    }
+
+/**
+ * عدد السلاسل النشطة
+ */
+    private function getActiveSeriesCount()
+    {
+        return Lecture::whereNotNull('series_id')
+            ->where('series_status', '!=', 'completed')
+            ->distinct('series_id')
+            ->count();
+    }
+
+/**
+ * الامتحانات القادمة
+ */
+    private function getUpcomingExams()
+    {
+        return Lecture::where('type', 'final_exam')
+            ->where('date', '>=', today())
+            ->orderBy('date')
+            ->limit(5);
     }
 
     public function bulkPaymentReminder()
@@ -1397,6 +2112,137 @@ class AdminController extends Controller
         })->count();
 
         return back()->with('success', "تم إرسال تنبيهات نسبة الحضور المنخفض لـ {$lowAttendanceCount} ولي أمر");
+    }
+
+    /**
+     * جلب المدرسين المتاحين
+     */
+    public function getAvailableTeachers(Request $request)
+    {
+        try {
+            $groupId = $request->get('group_id');
+
+            if (! $groupId) {
+                // جلب جميع المدرسين إذا لم تكن هناك مجموعة محددة
+                $teachers = Teacher::with('user')
+                    ->whereHas('user', function ($query) {
+                        $query->where('is_active', true);
+                    })
+                    ->get()
+                    ->map(function ($teacher) {
+                        return [
+                            'id'             => $teacher->id,
+                            'name'           => $teacher->user->name,
+                            'email'          => $teacher->user->email,
+                            'specialization' => $teacher->specialization,
+                            'display_name'   => $teacher->user->name . ($teacher->specialization ? ' (' . $teacher->specialization . ')' : ''),
+                        ];
+                    });
+            } else {
+                // جلب المدرسين المتاحين للمجموعة
+                // يمكن تخصيص هذا المنطق حسب احتياجاتك
+
+                // طريقة 1: جلب جميع المدرسين (يمكن تخصيصها)
+                $teachers = Teacher::with('user')
+                    ->whereHas('user', function ($query) {
+                        $query->where('is_active', true);
+                    })
+                    ->get()
+                    ->map(function ($teacher) {
+                        return [
+                            'id'             => $teacher->id,
+                            'name'           => $teacher->user->name,
+                            'email'          => $teacher->user->email,
+                            'specialization' => $teacher->specialization,
+                            'display_name'   => $teacher->user->name . ($teacher->specialization ? ' (' . $teacher->specialization . ')' : ''),
+                        ];
+                    });
+
+                // طريقة 2: جلب المدرسين بناء على المواد المرتبطة بالمجموعة (إذا كنت تريد تخصيص أكثر)
+                /*
+            $teachers = DB::table('teachers')
+                ->join('users', 'teachers.user_id', '=', 'users.id')
+                ->join('group_subjects', function($join) use ($groupId) {
+                    $join->on('teachers.specialization_subject_id', '=', 'group_subjects.subject_id')
+                         ->where('group_subjects.group_id', '=', $groupId);
+                })
+                ->where('users.is_active', true)
+                ->select(
+                    'teachers.id',
+                    'users.name',
+                    'users.email',
+                    'teachers.specialization',
+                    DB::raw('CONCAT(users.name, CASE WHEN teachers.specialization IS NOT NULL THEN CONCAT(" (", teachers.specialization, ")") ELSE "" END) as display_name')
+                )
+                ->distinct()
+                ->get();
+            */
+            }
+
+            // لوغ للتصحيح
+            Log::info('Teachers loaded', [
+                'group_id'       => $groupId,
+                'teachers_count' => $teachers->count(),
+            ]);
+
+            return response()->json([
+                'success'  => true,
+                'teachers' => $teachers,
+                'message'  => "تم تحميل {$teachers->count()} مدرس",
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error loading teachers', [
+                'group_id' => $request->get('group_id'),
+                'error'    => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+
+    }
+
+/**
+ * جلب السلاسل النشطة
+ */
+    public function getActiveSeries()
+    {
+        try {
+            $series = Lecture::activeSeries()
+                ->with(['teacher.user', 'group', 'subject'])
+                ->select('series_id', 'title', 'teacher_id', 'group_id', 'subject_id')
+                ->distinct('series_id')
+                ->get()
+                ->map(function ($lecture) {
+                    $seriesLectures = Lecture::where('series_id', $lecture->series_id)->get();
+
+                    return [
+                        'series_id'          => $lecture->series_id,
+                        'title'              => $lecture->title,
+                        'teacher_name'       => $lecture->teacher->user->name,
+                        'group_name'         => $lecture->group->name,
+                        'subject_name'       => $lecture->subject->name ?? '',
+                        'total_lectures'     => $seriesLectures->count(),
+                        'completed_lectures' => $seriesLectures->where('status', 'completed')->count(),
+                        'remaining_lectures' => $seriesLectures->where('date', '>', today())->count(),
+                        'weeks_count'        => $seriesLectures->max('date')->diffInWeeks($seriesLectures->min('date')),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'series'  => $series,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في جلب السلاسل النشطة: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     // ======================== وظائف مساعدة ========================

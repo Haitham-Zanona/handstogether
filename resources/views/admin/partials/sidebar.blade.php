@@ -35,6 +35,16 @@
 </li>
 
 <li>
+    <a href="{{ route('admin.lectures.index') }}"
+        class="flex items-center px-6 py-3 text-white hover:bg-secondary rounded-r-lg mx-2 {{ request()->routeIs('admin.lectures*') ? 'bg-secondary' : '' }}">
+        <svg class="w-5 h-5 ml-3" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        المحاضرات والجدولة
+    </a>
+</li>
+
+<li>
     <a href="{{ route('admin.attendance') }}"
         class="flex items-center px-6 py-3 text-white hover:bg-secondary rounded-r-lg mx-2 {{ request()->routeIs('admin.attendance*') ? 'bg-secondary' : '' }}">
         <svg class="w-5 h-5 ml-3" fill="none" stroke="currentColor" stroke-width="2">

@@ -118,6 +118,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/groups/students/available', [AdminController::class, 'getAvailableStudents'])->name('groups.students.available');
         Route::get('/groups/available', [AdminController::class, 'getAvailableGroupsForTransfer'])->name('groups.available');
 
+        Route::get('/groups/subjects/available', [AdminController::class, 'getAvailableSubjects'])->name('groups.subjects.available');
+        Route::get('/groups/subjects/for-lectures', [AdminController::class, 'getGroupSubjects'])->name('groups.subjects.for-lectures');
+
+        Route::get('/groups/teachers/available', [AdminController::class, 'getAvailableTeachers'])->name('groups.teachers.available');
+
 // CRUD العمليات الأساسية
         Route::post('/groups', [AdminController::class, 'storeGroup'])->name('groups.store');
         Route::put('/groups/{group}', [AdminController::class, 'updateGroup'])->name('groups.update');
@@ -130,7 +135,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/groups/{group}/students/{student}', [AdminController::class, 'removeStudentFromGroup'])->name('groups.students.remove');
 
         // Routes عامة للمواد (بدون parameters)
-        Route::get('/groups/subjects/available', [AdminController::class, 'getAvailableSubjects'])->name('groups.subjects.available');
+        // Route::get('/groups/subjects/available', [AdminController::class, 'getAvailableSubjects'])->name('groups.subjects.available');
+
+        // Route::get('/groups/subjects-for-lectures', [AdminController::class, 'getGroupSubjectsForLectures'])->name('groups.subjects.for-lectures');
+
+        // Route::get('/groups/teachers-available', [AdminController::class, 'getAvailableTeachers'])
+        //     ->name('groups.teachers.available');
 
 // Routes الخاصة بمعرف المجموعة (Group Subjects Management)
         Route::prefix('groups/{group}/subjects')->name('groups.subjects.')->group(function () {
@@ -150,9 +160,41 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/copy', [AdminController::class, 'copySubjectsBetweenGroups'])->name('copy');
         });
 
-        // ========== Routes أخرى ==========
-        Route::get('/lectures/calendar-data', [AdminController::class, 'getCalendarData'])
-            ->name('lectures.calendar-data');
+        // ========== المحاضرات والجدولة ==========
+        Route::prefix('lectures')->name('lectures.')->group(function () {
+            // الصفحة الرئيسية
+            Route::get('/', [AdminController::class, 'lecturesIndex'])->name('index');
+
+            // البيانات والتقويم
+            Route::get('/calendar-data', [AdminController::class, 'getCalendarData'])->name('calendar-data');
+            Route::get('/data', [AdminController::class, 'getLecturesData'])->name('data');
+
+            // إدارة المحاضرات
+            Route::post('/', [AdminController::class, 'storeLecture'])->name('store');
+            Route::put('/{lecture}', [AdminController::class, 'updateLecture'])->name('update');
+            Route::delete('/{lecture}', [AdminController::class, 'destroyLecture'])->name('destroy');
+
+            // السلاسل المتكررة
+            Route::post('/series', [AdminController::class, 'createLectureSeries'])->name('series.store');
+            Route::put('/series/{seriesId}', [AdminController::class, 'updateLectureSeries'])->name('series.update');
+            Route::delete('/series/{seriesId}', [AdminController::class, 'destroyLectureSeries'])->name('series.destroy');
+
+            // الامتحانات النهائية
+            Route::post('/final-exam', [AdminController::class, 'createFinalExam'])->name('final-exam.store');
+
+            // تأجيل وإلغاء المحاضرات
+            Route::patch('/{lecture}/reschedule', [AdminController::class, 'rescheduleLecture'])->name('reschedule');
+            Route::patch('/{lecture}/cancel', [AdminController::class, 'cancelLecture'])->name('cancel');
+
+            // Routes إضافية للمحاضرات
+            Route::get('/teachers', [AdminController::class, 'getAvailableTeachers'])->name('teachers');
+            Route::get('/active-series', [AdminController::class, 'getActiveSeries'])->name('active-series');
+            Route::get('/conflicts', [AdminController::class, 'checkLectureConflicts'])->name('conflicts');
+
+            // البحث والفلترة
+            Route::get('/search', [AdminController::class, 'searchLectures'])->name('search');
+            Route::get('/filter', [AdminController::class, 'filterLectures'])->name('filter');
+        });
 
         // Other Admin Routes
         Route::get('/attendance', [AdminController::class, 'attendance'])->name('attendance');
@@ -168,7 +210,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ========== Routes إضافية للمحاضرات والتقارير (اختياري) ==========
 
         // المحاضرات 🆕
-        Route::post('/lectures', [AdminController::class, 'createLecture'])->name('lectures.store');
 
         // المدفوعات 🆕
         Route::patch('/payments/{payment}/mark-paid', [AdminController::class, 'markPaymentAsPaid'])->name('payments.mark-paid');
