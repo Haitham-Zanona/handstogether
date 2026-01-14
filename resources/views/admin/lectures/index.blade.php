@@ -126,6 +126,7 @@ $pageDescription = 'إدارة المحاضرات والسلاسل والامت�
         getSubjects: '{{ route("admin.groups.subjects.available") }}',
         getGroupSubjects: '{{ route("admin.groups.subjects.for-lectures") }}',
         getTeachers: '{{ route("admin.groups.teachers.available") }}',
+        activeSeries: '{{ route("admin.lectures.active-series") }}',
 
         // Routes للبيانات المساعدة
 
@@ -1536,9 +1537,67 @@ $pageDescription = 'إدارة المحاضرات والسلاسل والامت�
             },
 
             async loadActiveSeries() {
-                // هنا ستكون دالة لتحميل السلاسل النشطة
-                // سيتم تطويرها لاحقاً
+                try {
+                if (!window.routes.activeSeries) {
+                console.warn('Active series route not defined');
                 this.activeSeries = [];
+                return;
+                }
+
+                const response = await fetch(window.routes.activeSeries, {
+                headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+                });
+
+                if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                this.activeSeries = data.series || [];
+                console.log('Active series loaded:', this.activeSeries.length);
+                } else {
+                console.error('API returned error:', data.message);
+                this.activeSeries = [];
+                }
+                } catch (error) {
+                console.error('Error loading active series:', error);
+                this.activeSeries = [];
+                // يمكن إضافة رسالة خطأ للمستخدم
+                this.showAlertMessage('error', 'حدث خطأ في تحميل السلاسل النشطة');
+                }
+            },
+
+            async endSeries(series) {
+            if (!confirm(`هل أنت متأكد من إنهاء السلسلة "${series.title}"؟`)) {
+            return;
+            }
+
+            try {
+            const response = await fetch(`${window.routes.updateLecture}/${series.series_id}/end-series`, {
+            method: 'PATCH',
+            headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+            }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+            this.showAlertMessage('success', 'تم إنهاء السلسلة بنجاح');
+            await this.loadActiveSeries(); // إعادة تحميل السلاسل
+            } else {
+            throw new Error(data.message);
+            }
+            } catch (error) {
+            this.showAlertMessage('error', 'حدث خطأ في إنهاء السلسلة: ' + error.message);
+            }
             },
 
             async loadAvailableData() {

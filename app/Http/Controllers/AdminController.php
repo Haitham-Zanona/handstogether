@@ -1489,6 +1489,222 @@ class AdminController extends Controller
 
     }
 
+    /**
+     * API بيانات تقويم الـ Dashboard المحسن - النسخة النهائية
+     */
+    public function getDashboardCalendarData(Request $request)
+    {
+        try {
+            $start = $request->get('start');
+            $end   = $request->get('end');
+
+            $lecturesCount = Lecture::count();
+            if ($lecturesCount === 0) {
+                return response()->json([
+                    'lectures' => [],
+                    'stats'    => [
+                        'total_lectures'    => 0,
+                        'today_lectures'    => 0,
+                        'upcoming_lectures' => 0,
+                        'subjects_count'    => 0,
+                    ],
+                    'message'  => 'لا توجد محاضرات في النظام',
+                ]);
+            }
+
+            // استعلام بسيط بدون فلتر تاريخ أولاً
+            $query = Lecture::query();
+
+            // إضافة العلاقات تدريجياً
+            try {
+                $query->with(['subject', 'teacher.user', 'group']);
+            } catch (\Exception $e) {
+                // تجاهل أخطاء العلاقات
+            }
+
+            $lectures = $query->orderBy('date')->get();
+
+            $formattedLectures = $lectures->map(function ($lecture) {
+                return [
+                    'id'             => $lecture->id,
+                    'title'          => $lecture->title ?? 'محاضرة',
+                    'subject'        => optional($lecture->subject)->name ?? 'مادة عامة',
+                    'date'           => $lecture->date->format('Y-m-d'),
+                    'start_time'     => $this->formatLectureTime($lecture->start_time),
+                    'end_time'       => $this->formatLectureTime($lecture->end_time),
+                    'teacher'        => optional($lecture->teacher->user ?? null)->name ?? 'غير محدد',
+                    'group'          => optional($lecture->group)->name ?? 'مجموعة عامة',
+                    'students_count' => optional($lecture->group)->students_count ?? 0,
+                    'is_today'       => $lecture->date->isToday(),
+                ];
+            });
+
+            $stats = [
+                'total_lectures'    => $formattedLectures->count(),
+                'today_lectures'    => $formattedLectures->where('is_today', true)->count(),
+                'upcoming_lectures' => $formattedLectures->count(),
+                'subjects_count'    => $formattedLectures->pluck('subject')->unique()->count(),
+            ];
+
+            return response()->json([
+                'lectures'        => $formattedLectures,
+                'stats'           => $stats,
+                'database_source' => true,
+                'last_updated'    => now()->format('H:i'),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('خطأ في Dashboard Calendar: ' . $e->getMessage());
+
+            return response()->json([
+                'error'    => 'خطأ: ' . $e->getMessage(),
+                'lectures' => [],
+                'stats'    => ['total_lectures' => 0, 'today_lectures' => 0, 'upcoming_lectures' => 0, 'subjects_count' => 0],
+            ], 500);
+        }
+
+    }
+
+/**
+ * تنسيق وقت المحاضرة
+ */
+    private function formatLectureTime($time)
+    {
+        if (! $time) {
+            return '09:00';
+        }
+
+// إذا كان datetime كامل
+        if (is_string($time) && strlen($time) > 8) {
+            try {
+                $carbonTime = \Carbon\Carbon::parse($time);
+                return $carbonTime->format('H:i');
+            } catch (\Exception $e) {
+                return '09:00';
+            }
+        }
+
+// إذا كان time فقط
+        if (is_string($time)) {
+            return substr($time, 0, 5); // أخذ الساعة والدقيقة فقط
+        }
+
+        if ($time instanceof \DateTime) {
+            return $time->format('H:i');
+        }
+
+        return '09:00';
+
+    }
+
+/**
+ * تحديد أولوية المحاضرة للـ Dashboard
+ */
+    private function getDashboardLecturePriority($lecture)
+    {
+        $now             = now();
+        $lectureDateTime = \Carbon\Carbon::parse($lecture->date . ' ' . $lecture->start_time);
+
+        // محاضرة في نفس اليوم
+        if ($lectureDateTime->isToday()) {
+            return 'high';
+        }
+
+        // محاضرة غداً
+        if ($lectureDateTime->isTomorrow()) {
+            return 'medium';
+        }
+
+        // محاضرة خلال الأسبوع
+        if ($lectureDateTime->diffInDays($now) <= 7) {
+            return 'normal';
+        }
+
+        return 'low';
+    }
+
+/**
+ * الحصول على لون المادة للـ Dashboard
+ */
+    private function getDashboardSubjectColor($subject)
+    {
+        $colors = [
+            'رياضيات' => '#3b82f6',
+            'فيزياء'  => '#ef4444',
+            'كيمياء'  => '#10b981',
+            'عربي'    => '#f59e0b',
+            'إنجليزي' => '#8b5cf6',
+            'تاريخ'   => '#06b6d4',
+            'جغرافيا' => '#84cc16',
+            'أحياء'   => '#f97316',
+            'علوم'    => '#ec4899',
+            'حاسوب'   => '#f97316',
+            'إسلامية' => '#10b981',
+            'فرنسي'   => '#ec4899',
+            'default' => '#6366f1',
+        ];
+
+        return $colors[$subject] ?? $colors['default'];
+    }
+
+/**
+ * إحصائيات سريعة للـ Dashboard (دالة إضافية اختيارية)
+ */
+    public function getDashboardQuickStats()
+    {
+        try {
+            $today     = now()->format('Y-m-d');
+            $thisWeek  = [now()->startOfWeek()->format('Y-m-d'), now()->endOfWeek()->format('Y-m-d')];
+            $thisMonth = now()->format('Y-m');
+
+            $stats = [
+                'today' => [
+                    'total'     => Lecture::whereDate('date', $today)->count(),
+                    'completed' => Lecture::whereDate('date', $today)
+                        ->where('status', 'completed')->count(),
+                    'upcoming'  => Lecture::whereDate('date', $today)
+                        ->whereTime('start_time', '>', now()->format('H:i:s'))
+                        ->count(),
+                ],
+
+                'week'  => [
+                    'total'    => Lecture::whereBetween('date', $thisWeek)->count(),
+                    'subjects' => Lecture::whereBetween('date', $thisWeek)
+                        ->with('subject')
+                        ->get()
+                        ->pluck('subject.name')
+                        ->filter()
+                        ->unique()
+                        ->count(),
+                ],
+
+                'month' => [
+                    'total'    => Lecture::whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$thisMonth])->count(),
+                    'teachers' => Lecture::whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$thisMonth])
+                        ->with('teacher')
+                        ->get()
+                        ->pluck('teacher.id')
+                        ->filter()
+                        ->unique()
+                        ->count(),
+                ],
+            ];
+
+            return response()->json($stats);
+
+        } catch (\Exception $e) {
+            Log::error('خطأ في إحصائيات Dashboard السريعة', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'today' => ['total' => 0, 'completed' => 0, 'upcoming' => 0],
+                'week'  => ['total' => 0, 'subjects' => 0],
+                'month' => ['total' => 0, 'teachers' => 0],
+            ]);
+        }
+    }
+
     private function getEventColor($type)
     {
         return match ($type) {
@@ -1771,15 +1987,15 @@ class AdminController extends Controller
         try {
             DB::beginTransaction();
 
-            // ✅ تحويل التاريخ إلى Carbon instance أولاً
+            // ✅ التعديل هنا: تحديد المدة لـ 4 أشهر بدلاً من سنة
             $startDate = Carbon::parse($request->start_date);
-            $endDate   = $request->end_date ? Carbon::parse($request->end_date) : $startDate->copy()->addWeeks(52);
+            $endDate   = $request->end_date ? Carbon::parse($request->end_date) : $startDate->copy()->addMonths(4); // 4 أشهر بدلاً من 52 أسبوع
 
             // إنشاء السلسلة
             $series = LectureSeries::create([
                 'title'      => $request->title,
-                'start_date' => $startDate, // ✅ Carbon instance
-                'end_date'   => $endDate,   // ✅ Carbon instance
+                'start_date' => $startDate,
+                'end_date'   => $endDate, // ✅ الآن محدود بـ 4 أشهر
                 'start_time' => $request->start_time,
                 'end_time'   => $request->end_time,
                 'teacher_id' => $request->teacher_id,
@@ -1799,14 +2015,13 @@ class AdminController extends Controller
 
             return response()->json([
                 'success'   => true,
-                'message'   => 'تم إنشاء سلسلة المحاضرات والمحاضرات المرتبطة بها بنجاح',
+                'message'   => 'تم إنشاء سلسلة المحاضرات لمدة 4 أشهر والمحاضرات المرتبطة بها بنجاح',
                 'series_id' => $series->id,
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-            // ✅ إضافة لوغ للتصحيح
             Log::error('Error creating lecture series', [
                 'error'        => $e->getMessage(),
                 'request_data' => $request->all(),
@@ -1818,7 +2033,6 @@ class AdminController extends Controller
                 'message' => 'حدث خطأ في إنشاء السلسلة: ' . $e->getMessage(),
             ], 500);
         }
-
     }
 
 /**
@@ -2211,36 +2425,65 @@ class AdminController extends Controller
     public function getActiveSeries()
     {
         try {
-            $series = Lecture::activeSeries()
+            // ✅ استخدام whereNotNull بدلاً من scope قد لا يكون موجود
+            $series = Lecture::whereNotNull('series_id')
+                ->where(function ($query) {
+                    // السلاسل النشطة = لها محاضرات قادمة أو غير مكتملة
+                    $query->where('date', '>=', today())
+                        ->orWhere('status', '!=', 'completed');
+                })
                 ->with(['teacher.user', 'group', 'subject'])
-                ->select('series_id', 'title', 'teacher_id', 'group_id', 'subject_id')
+                ->select('series_id', 'title', 'teacher_id', 'group_id', 'subject_id', 'date')
                 ->distinct('series_id')
                 ->get()
                 ->map(function ($lecture) {
                     $seriesLectures = Lecture::where('series_id', $lecture->series_id)->get();
 
+                    // ✅ معالجة آمنة للتواريخ
+                    $dates      = $seriesLectures->pluck('date')->filter();
+                    $weeksCount = 0;
+                    if ($dates->count() > 1) {
+                        $maxDate = $dates->max();
+                        $minDate = $dates->min();
+                        if ($maxDate && $minDate) {
+                            $weeksCount = \Carbon\Carbon::parse($maxDate)->diffInWeeks(\Carbon\Carbon::parse($minDate));
+                        }
+                    }
+
                     return [
                         'series_id'          => $lecture->series_id,
-                        'title'              => $lecture->title,
-                        'teacher_name'       => $lecture->teacher->user->name,
-                        'group_name'         => $lecture->group->name,
-                        'subject_name'       => $lecture->subject->name ?? '',
+                        'title'              => $lecture->title ?? 'سلسلة بدون عنوان',
+                        // ✅ معالجة آمنة للعلاقات
+                        'teacher_name'       => $lecture->teacher && $lecture->teacher->user
+                            ? $lecture->teacher->user->name
+                            : 'غير محدد',
+                        'group_name'         => $lecture->group ? $lecture->group->name : 'غير محدد',
+                        'subject_name'       => $lecture->subject ? $lecture->subject->name : '',
                         'total_lectures'     => $seriesLectures->count(),
                         'completed_lectures' => $seriesLectures->where('status', 'completed')->count(),
                         'remaining_lectures' => $seriesLectures->where('date', '>', today())->count(),
-                        'weeks_count'        => $seriesLectures->max('date')->diffInWeeks($seriesLectures->min('date')),
+                        'weeks_count'        => $weeksCount,
                     ];
                 });
 
             return response()->json([
                 'success' => true,
                 'series'  => $series,
+                'count'   => $series->count(), // ✅ إضافة عدد للتصحيح
             ]);
 
         } catch (\Exception $e) {
+            // ✅ إضافة تفاصيل أكثر للتصحيح
+            Log::error('Error in getActiveSeries', [
+                'error' => $e->getMessage(),
+                'line'  => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ في جلب السلاسل النشطة: ' . $e->getMessage(),
+                'series'  => [], // ✅ إرجاع مصفوفة فارغة
             ], 500);
         }
     }

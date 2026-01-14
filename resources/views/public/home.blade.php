@@ -21,7 +21,7 @@
                     </svg>
                 </a>
                 <a href="#about"
-                    class="inline-flex items-center px-8 py-4 text-lg font-semibold text-white transition duration-300 transform border-2 border-white rounded-lg hover:bg-white hover:text-primary hover:scale-105">
+                    class="inline-flex items-center px-8 py-4 text-lg font-semibold text-white transition duration-300 transform border-2 border-white rounded-lg hover:bg-white hover:text-blue-500 hover:scale-105">
                     <span>تعرف علينا أكثر</span>
                 </a>
             </div>
@@ -84,7 +84,7 @@
 </section>
 
 <!-- About Section -->
-<section id="about" class="py-20 bg-gray-50" dir="rtl">
+<section id="about" class="py-20 bg-gray-200" dir="rtl">
     <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
         <div class="grid items-center grid-cols-1 gap-12 lg:gap-16 lg:grid-cols-2">
             <div>
@@ -109,7 +109,7 @@
                 </div>
             </div>
             <div class="relative">
-                <div class="p-8 text-white shadow-2xl rounded-xl bg-gradient-to-br from-primary to-blue-700">
+                <div class="p-8 text-white shadow-2xl rounded-xl bg-gradient-to-br from-blue-500 to-blue-700">
                     <h3 class="mb-4 text-2xl font-bold">رؤيتنا</h3>
                     <p class="mb-6 leading-relaxed">أن نكون الأكاديمية التعليمية الرائدة في المنطقة في تقديم تعليم عالي
                         الجودة يواكب
@@ -138,7 +138,7 @@
         <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <!-- Student Portal -->
             <a href="{{ route('portal.student') }}"
-                class="block p-8 text-white transition-all duration-300 transform group rounded-xl bg-gradient-to-br from-primary to-blue-700 hover:shadow-2xl hover:scale-105">
+                class="block p-8 text-white transition-all duration-300 transform group rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 hover:shadow-2xl hover:scale-105">
                 <div class="text-center">
                     <div
                         class="flex items-center justify-center w-16 h-16 mx-auto mb-6 transition-all duration-300 bg-white rounded-full bg-opacity-20 group-hover:bg-opacity-30">
@@ -206,7 +206,7 @@
 </section>
 
 <!-- Call to Action -->
-<section class="py-20 text-white bg-gradient-to-r from-primary to-blue-700" dir="rtl">
+<section class="py-20 text-white bg-gradient-to-r from-blue-500 to-blue-700" dir="rtl">
     <div class="px-4 mx-auto text-center max-w-7xl sm:px-6 lg:px-8">
         <h2 class="mb-6 text-3xl font-bold md:text-4xl lg:text-5xl">انضم إلى عائلة الأكاديمية</h2>
         <p class="max-w-3xl mx-auto mb-8 text-lg leading-relaxed md:text-xl">

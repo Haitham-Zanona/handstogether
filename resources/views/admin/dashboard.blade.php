@@ -142,37 +142,103 @@ $pageDescription = 'نظرة عامة على أداء الأكاديمية وا�
     </div>
     <!-- Calendar -->
     <div class="p-6 bg-white shadow-md rounded-2xl xl:col-span-2">
-        <!-- العنوان -->
-        <h3 class="flex items-center justify-between mb-4 text-lg font-semibold text-gray-800">
-            📅 التقويم الأكاديمي
+        <!-- العنوان مع معلومات إضافية -->
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="flex items-center text-lg font-semibold text-gray-800">
+                📅 التقويم الأكاديمي
+                <span id="lectureStats"
+                    class="hidden px-2 py-1 mr-2 text-xs text-blue-800 bg-blue-100 rounded-full"></span>
+            </h3>
             <span id="currentPeriod" class="text-sm text-gray-500"></span>
-        </h3>
-
-        <!-- أزرار التنقل -->
-        <div class="flex justify-between mb-4">
-            <button id="prevBtn" class="px-3 py-1 text-gray-700 bg-gray-200 rounded hover:bg-gray-300">❮ السابق</button>
-            <button id="nextBtn" class="px-3 py-1 text-gray-700 bg-gray-200 rounded hover:bg-gray-300">التالي ❯</button>
         </div>
 
-        <!-- شبكة الأيام -->
-        <div class="grid grid-cols-7 overflow-hidden text-sm text-center border rounded-lg">
-            <!-- رؤوس الأيام -->
-            <div class="p-2 font-semibold bg-gray-100">الأحد</div>
-            <div class="p-2 font-semibold bg-gray-100">الاثنين</div>
-            <div class="p-2 font-semibold bg-gray-100">الثلاثاء</div>
-            <div class="p-2 font-semibold bg-gray-100">الأربعاء</div>
-            <div class="p-2 font-semibold bg-gray-100">الخميس</div>
-            <div class="p-2 font-semibold bg-gray-100">الجمعة</div>
-            <div class="p-2 font-semibold bg-gray-100">السبت</div>
+        <!-- أزرار التنقل مع مؤشر التحميل -->
+        <div class="flex items-center justify-between mb-4">
+            <button id="prevBtn"
+                class="flex items-center px-3 py-1 text-gray-700 transition-colors bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">
+                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                السابق
+            </button>
 
-            <!-- هنا بضيف الأيام ديناميكياً بالـ JS -->
+            <!-- مؤشر التحميل -->
+            <div id="loadingIndicator" class="hidden">
+                <svg class="w-5 h-5 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle>
+                    <path fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        class="opacity-75"></path>
+                </svg>
+            </div>
+
+            <button id="nextBtn"
+                class="flex items-center px-3 py-1 text-gray-700 transition-colors bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50">
+                التالي
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- شبكة التقويم -->
+        <div class="grid grid-cols-7 overflow-hidden text-sm text-center border rounded-lg shadow-sm">
+            <!-- رؤوس الأيام -->
+            <div class="p-3 font-semibold text-gray-700 border-b bg-gray-50">الأحد</div>
+            <div class="p-3 font-semibold text-gray-700 border-b bg-gray-50">الاثنين</div>
+            <div class="p-3 font-semibold text-gray-700 border-b bg-gray-50">الثلاثاء</div>
+            <div class="p-3 font-semibold text-gray-700 border-b bg-gray-50">الأربعاء</div>
+            <div class="p-3 font-semibold text-gray-700 border-b bg-gray-50">الخميس</div>
+            <div class="p-3 font-semibold text-gray-700 border-b bg-gray-50">الجمعة</div>
+            <div class="p-3 font-semibold text-gray-700 border-b bg-gray-50">السبت</div>
+
+            <!-- شبكة الأيام - يتم ملؤها بـ JavaScript -->
             <div id="calendarGrid" class="grid grid-cols-7 col-span-7"></div>
         </div>
 
-        <!-- محاضرات اليوم -->
+        <!-- محاضرات اليوم - قسم محسن -->
         <div class="mt-6">
-            <h4 class="mb-2 text-base font-semibold text-gray-700">📌 محاضرات اليوم</h4>
-            <ul id="todayLectures" class="space-y-2 text-sm text-gray-600"></ul>
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-base font-semibold text-gray-700">📌 محاضرات اليوم</h4>
+                <button id="refreshTodayBtn" class="flex items-center text-xs text-blue-600 hover:text-blue-800"
+                    onclick="window.dashboardCalendar?.refresh()">
+                    <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+                    تحديث
+                </button>
+            </div>
+
+            <!-- محتوى محاضرات اليوم -->
+            <div id="todayLectures" class="min-h-[100px]">
+                <!-- يتم ملء هذا القسم بـ JavaScript -->
+                <div class="py-4 text-center text-gray-500">
+                    <div class="animate-pulse">جاري التحميل...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- معلومات إضافية -->
+        <div class="pt-4 mt-4 border-t border-gray-100">
+            <div class="flex items-center justify-between text-xs text-gray-500">
+                <span>آخر تحديث: <span id="lastUpdate">---</span></span>
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <div class="flex items-center">
+                        <div class="w-2 h-2 ml-1 bg-green-500 rounded-full"></div>
+                        <span>محاضرة واحدة</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2 h-2 ml-1 bg-orange-500 rounded-full"></div>
+                        <span>2-3 محاضرات</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2 h-2 ml-1 bg-red-500 rounded-full"></div>
+                        <span>أكثر من 3</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -320,491 +386,212 @@ $pageDescription = 'نظرة عامة على أداء الأكاديمية وا�
 @endsection
 
 @push('scripts')
-{{-- <script>
-    // FullCalendar Initialization
-    class LecturesCalendar {
-    constructor() {
-    this.currentDate = new Date();
-    this.currentView = 'month';
-    this.lectures = [];
-    this.tooltip = document.getElementById('lectureTooltip');
-
-    this.monthNames = [
-    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-    ];
-
-    this.dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-
-    this.groupColors = [
-    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-    '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
-    ];
-
-    this.init();
-    }
-
-    init() {
-    this.setupEventListeners();
-    this.loadLectures();
-    }
-
-    setupEventListeners() {
-    // View buttons
-    document.querySelectorAll('.view-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('active');
-    this.currentView = e.target.dataset.view;
-    this.renderCalendar();
-    });
-    });
-
-    // Navigation buttons
-    document.getElementById('prevBtn').addEventListener('click', () => {
-    this.previousPeriod();
-    });
-
-    document.getElementById('nextBtn').addEventListener('click', () => {
-    this.nextPeriod();
-    });
-
-    // Tooltip events
-    document.addEventListener('mouseover', (e) => {
-    if (e.target.classList.contains('lecture-item')) {
-    this.showTooltip(e);
-    }
-    });
-
-    document.addEventListener('mouseout', (e) => {
-    if (e.target.classList.contains('lecture-item')) {
-    this.hideTooltip();
-    }
-    });
-    }
-
-    async loadLectures() {
-    try {
-    document.getElementById('loadingState').style.display = 'flex';
-
-    // استدعاء API لجلب البيانات
-    const response = await fetch('/admin/lectures/calendar-data', {
-    method: 'GET',
-    headers: {
-    'Accept': 'application/json',
-    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-    }
-    });
-
-    if (!response.ok) {
-    throw new Error('فشل في جلب البيانات');
-    }
-
-    this.lectures = await response.json();
-
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('calendarGrid').style.display = 'grid';
-
-    this.renderCalendar();
-
-    } catch (error) {
-    console.error('خطأ في جلب المحاضرات:', error);
-
-    // استخدام بيانات وهمية للتجربة
-    this.lectures = this.generateSampleData();
-
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('calendarGrid').style.display = 'grid';
-
-    this.renderCalendar();
-    }
-    }
-
-    generateSampleData() {
-    const sampleLectures = [];
-    const today = new Date();
-
-    for (let i = 0; i < 30; i++) { const date=new Date(today); date.setDate(today.getDate() + Math.floor(Math.random() * 30)
-        - 15); if (Math.random()> 0.7) { // 30% احتمال وجود محاضرة
-        sampleLectures.push({
-        id: i + 1,
-        title: `محاضرة ${['رياضيات', 'علوم', 'لغة عربية', 'تاريخ', 'جغرافيا'][Math.floor(Math.random() * 5)]}`,
-        date: date.toISOString().split('T')[0],
-        start_time: `${8 + Math.floor(Math.random() * 8)}:00`,
-        end_time: `${10 + Math.floor(Math.random() * 6)}:00`,
-        teacher: {
-        user: {
-        name: `أ. ${'محمد أحمد علي فاطمة سارة'.split(' ')[Math.floor(Math.random() * 5)]}`
-        }
-        },
-        group: {
-        id: Math.floor(Math.random() * 5) + 1,
-        name: `مجموعة ${['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة'][Math.floor(Math.random() * 5)]}`
-        },
-        description: 'وصف المحاضرة'
-        });
-        }
-        }
-
-        return sampleLectures;
-        }
-
-        renderCalendar() {
-        const grid = document.getElementById('calendarGrid');
-        const currentPeriod = document.getElementById('currentPeriod');
-
-        if (this.currentView === 'month') {
-        this.renderMonthView(grid, currentPeriod);
-        } else if (this.currentView === 'week') {
-        this.renderWeekView(grid, currentPeriod);
-        } else {
-        this.renderDayView(grid, currentPeriod);
-        }
-
-        this.renderTodayLectures();
-        }
-
-        renderMonthView(grid, currentPeriod) {
-        const year = this.currentDate.getFullYear();
-        const month = this.currentDate.getMonth();
-
-        currentPeriod.textContent = `${this.monthNames[month]} ${year}`;
-
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const startDate = new Date(firstDay);
-        startDate.setDate(startDate.getDate() - firstDay.getDay());
-
-        let html = '';
-
-        // Headers
-        this.dayNames.forEach(day => {
-        html += `<div class="calendar-day-header">${day}</div>`;
-        });
-
-        // Days
-        const current = new Date(startDate);
-        for (let i = 0; i < 42; i++) { const isCurrentMonth=current.getMonth()===month; const isToday=this.isToday(current);
-            const dayLectures=this.getLecturesForDate(current); html +=` <div
-            class="calendar-day ${!isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}">
-            <div class="day-number">${current.getDate()}</div>
-            ${dayLectures.map(lecture => this.renderLectureItem(lecture)).join('')}
-            </div>
-            `;
-
-            current.setDate(current.getDate() + 1);
-            }
-
-            grid.innerHTML = html;
-            }
-
-            renderWeekView(grid, currentPeriod) {
-            // تنفيذ عرض الأسبوع
-            const startOfWeek = new Date(this.currentDate);
-            startOfWeek.setDate(this.currentDate.getDate() - this.currentDate.getDay());
-
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-            currentPeriod.textContent = `${startOfWeek.getDate()} - ${endOfWeek.getDate()}
-            ${this.monthNames[startOfWeek.getMonth()]} ${startOfWeek.getFullYear()}`;
-
-            // نفس منطق الشهر لكن لأسبوع واحد
-            this.renderMonthView(grid, currentPeriod);
-            }
-
-            renderDayView(grid, currentPeriod) {
-            const today = new Date();
-            currentPeriod.textContent = `${today.getDate()} ${this.monthNames[today.getMonth()]} ${today.getFullYear()}`;
-
-            const todayLectures = this.getLecturesForDate(today);
-
-            let html = '<div class="calendar-day-header">اليوم</div>';
-            html += `
-            <div class="calendar-day today" style="grid-column: 1 / -1; min-height: 400px;">
-                <div class="day-number">${today.getDate()}</div>
-                ${todayLectures.map(lecture => this.renderLectureItem(lecture)).join('')}
-                ${todayLectures.length === 0 ? '<div style="text-align: center; color: #6b7280; margin-top: 50px;">لا توجد محاضرات اليوم</div>' : ''}
-            </div>
-            `;
-
-            grid.innerHTML = html;
-            }
-
-            renderLectureItem(lecture) {
-            const groupColorIndex = (lecture.group.id - 1) % this.groupColors.length;
-            const hasStartedClass = lecture.has_started ? 'lecture-started' : '';
-            const isTodayClass = lecture.is_today ? 'lecture-today' : '';
-
-            return `
-            <div class="lecture-item ${hasStartedClass} ${isTodayClass}"
-                style="background-color: ${this.groupColors[groupColorIndex]}" data-lecture='${JSON.stringify(lecture)}'>
-                ${lecture.start_time} ${lecture.title}
-                ${lecture.has_started ? ' ✓' : ''}
-            </div>
-            `;
-            }
-
-            renderTodayLectures() {
-                const todayLectures = this.getLecturesForDate(new Date());
-                const container = document.getElementById('todayLectures');
-                const list = document.getElementById('todayLecturesList');
-
-                if (todayLectures.length > 0) {
-                container.style.display = 'block';
-                list.innerHTML = todayLectures.map(lecture => `
-                <div class="today-lecture-item ${lecture.has_started ? 'started' : ''}">
-                    <div class="lecture-time">${lecture.start_time} - ${lecture.end_time}</div>
-                    <div class="lecture-details">
-                        <div class="lecture-title">
-                            ${lecture.title}
-                            ${lecture.has_started ? '<span class="status-badge started">بدأت</span>' : '<span class="status-badge pending">قادمة</span>'}
-                        </div>
-                        <div class="lecture-group-teacher">
-                            ${lecture.group.name} • ${lecture.teacher.user.name}
-                        </div>
-                        <div class="attendance-info">
-                            الحضور: ${lecture.attendance_summary.present}/${lecture.attendance_summary.total} طالب
-                        </div>
-                    </div>
-                </div>
-                `).join('');
-                } else {
-                container.style.display = 'none';
-                }
-            }
-
-            getLecturesForDate(date) {
-            const dateStr = date.toISOString().split('T')[0];
-            return this.lectures.filter(lecture => lecture.date === dateStr);
-            }
-
-            isToday(date) {
-            const today = new Date();
-            return date.toDateString() === today.toDateString();
-            }
-
-            showTooltip(e) {
-           const lectureData = JSON.parse(e.target.dataset.lecture);
-        const attendanceSummary = lectureData.attendance_summary;
-
-        this.tooltip.innerHTML = `
-        <div class="tooltip-title">${lectureData.title}</div>
-        <div class="tooltip-info">
-            <div class="tooltip-row">
-                <span>الوقت:</span>
-                <span>${lectureData.start_time} - ${lectureData.end_time}</span>
-            </div>
-            <div class="tooltip-row">
-                <span>المجموعة:</span>
-                <span>${lectureData.group.name}</span>
-            </div>
-            <div class="tooltip-row">
-                <span>المدرس:</span>
-                <span>${lectureData.teacher.user.name}</span>
-            </div>
-            <div class="tooltip-row">
-                <span>الحضور:</span>
-                <span>${attendanceSummary.present}/${attendanceSummary.total}</span>
-            </div>
-            <div class="tooltip-row">
-                <span>الحالة:</span>
-                <span>${lectureData.has_started ? 'بدأت' : 'لم تبدأ بعد'}</span>
-            </div>
-            ${lectureData.description ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #374151;">
-                ${lectureData.description}</div>` : ''}
-        </div>
-        `;
-
-            // Position tooltip
-            const rect = e.target.getBoundingClientRect();
-            this.tooltip.style.left = rect.left + (rect.width / 2) + 'px';
-            this.tooltip.style.top = (rect.top - 10) + 'px';
-            this.tooltip.style.transform = 'translateX(-50%) translateY(-100%)';
-
-            this.tooltip.classList.add('show');
-            }
-
-            hideTooltip() {
-            this.tooltip.classList.remove('show');
-            }
-
-            previousPeriod() {
-            if (this.currentView === 'month') {
-            this.currentDate.setMonth(this.currentDate.getMonth() - 1);
-            } else if (this.currentView === 'week') {
-            this.currentDate.setDate(this.currentDate.getDate() - 7);
-            } else {
-            this.currentDate.setDate(this.currentDate.getDate() - 1);
-            }
-            this.renderCalendar();
-            }
-
-            nextPeriod() {
-            if (this.currentView === 'month') {
-            this.currentDate.setMonth(this.currentDate.getMonth() + 1);
-            } else if (this.currentView === 'week') {
-            this.currentDate.setDate(this.currentDate.getDate() + 7);
-            } else {
-            this.currentDate.setDate(this.currentDate.getDate() + 1);
-            }
-            this.renderCalendar();
-            }
-            }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        new LecturesCalendar();
-                                var calendarEl = document.getElementById('calendar');
-                                var calendar = new FullCalendar.Calendar(calendarEl, {
-                                    initialView: 'dayGridMonth',
-                                    locale: 'ar',
-                                    direction: 'rtl',
-                                    headerToolbar: {
-                                        left: 'prev,next today',
-                                        center: 'title',
-                                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                                    },
-                                    events: @json($lectures),
-                                    eventClick: function(info) {
-                                        alert('محاضرة: ' + info.event.title + '\n' +
-                                              'المدرس: ' + info.event.extendedProps.teacher + '\n' +
-                                              'المجموعة: ' + info.event.extendedProps.group);
-                                    },
-                                    height: 'auto',
-                                    eventDisplay: 'block',
-                                    dayMaxEvents: 3,
-                                    moreLinkText: function(num) {
-                                        return 'المزيد +' + num;
-                                    },
-                                    buttonText: {
-                                        today: 'اليوم',
-                                        month: 'شهر',
-                                        week: 'أسبوع',
-                                        day: 'يوم'
-                                    }
-                                });
-                                calendar.render();
-                            });
-</script> --}}
 
 <script>
-    // 📅 تقويم المحاضرات - نسخة كاملة وموحدة
+    // 📅 تقويم المحاضرات المصحح للـ Dashboard
 class LecturesCalendar {
     constructor() {
         this.currentDate = new Date();
         this.currentView = 'month';
         this.lectures = [];
-        this.tooltip = document.getElementById('lectureTooltip');
+        this.isLoading = false;
+        this.tooltip = this.createTooltip();
 
         this.monthNames = [
             'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
             'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
         ];
 
-        this.dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        this.dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
-        this.groupColors = [
-            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-            '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
-        ];
+        this.subjectColors = {
+            'رياضيات': '#3b82f6',
+            'فيزياء': '#ef4444',
+            'كيمياء': '#10b981',
+            'عربي': '#f59e0b',
+            'إنجليزي': '#8b5cf6',
+            'تاريخ': '#06b6d4',
+            'جغرافيا': '#84cc16',
+            'أحياء': '#f97316',
+            'علوم': '#ec4899',
+            'default': '#6366f1'
+        };
 
         this.init();
     }
 
-    // ------------------ التهيئة ------------------
+    createTooltip() {
+        const oldTooltip = document.getElementById('dashboardTooltip');
+        if (oldTooltip) oldTooltip.remove();
+
+        const tooltip = document.createElement('div');
+        tooltip.id = 'dashboardTooltip';
+        tooltip.className = 'absolute z-50 hidden px-4 py-3 text-sm text-white bg-gray-900 rounded-lg shadow-xl max-w-sm';
+        tooltip.style.pointerEvents = 'none';
+        document.body.appendChild(tooltip);
+        return tooltip;
+    }
+
     init() {
         this.setupEventListeners();
         this.loadLectures();
+        this.addCustomStyles();
     }
 
     setupEventListeners() {
-        // أزرار العرض
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.currentView = e.target.dataset.view;
-                this.renderCalendar();
-            });
-        });
-
-        // أزرار التنقل
         document.getElementById('prevBtn')?.addEventListener('click', () => this.previousPeriod());
         document.getElementById('nextBtn')?.addEventListener('click', () => this.nextPeriod());
 
-        // Tooltip
-        document.addEventListener('mouseover', (e) => {
-            if (e.target.classList.contains('lecture-item')) this.showTooltip(e);
-        });
-        document.addEventListener('mouseout', (e) => {
-            if (e.target.classList.contains('lecture-item')) this.hideTooltip();
-        });
-
-        // إغلاق الـ Tooltip عند التمرير/تغيير الحجم
         window.addEventListener('scroll', () => this.hideTooltip());
         window.addEventListener('resize', () => this.hideTooltip());
 
-        // إغلاق الـ Modal
         document.getElementById("closeModal")?.addEventListener("click", () => {
             const modal = document.getElementById("lectureModal");
-            modal.classList.add("hidden");
-            modal.classList.remove("flex");
+            if (modal) {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+            }
         });
 
-        // اختصارات الكيبورد
         document.addEventListener('keydown', (e) => {
             if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
             switch(e.key) {
                 case 'ArrowLeft': this.nextPeriod(); break;
                 case 'ArrowRight': this.previousPeriod(); break;
-                case '1': this.switchView('today'); break;
-                case '2': this.switchView('week'); break;
-                case '3': this.switchView('month'); break;
             }
         });
     }
 
-    // ------------------ جلب البيانات ------------------
+    setLoading(loading) {
+        this.isLoading = loading;
+        const indicator = document.getElementById('loadingIndicator');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        if (indicator) {
+            indicator.classList.toggle('hidden', !loading);
+        }
+
+        if (prevBtn && nextBtn) {
+            prevBtn.disabled = loading;
+            nextBtn.disabled = loading;
+        }
+    }
+
+    updateLastUpdateTime() {
+        const lastUpdateElement = document.getElementById('lastUpdate');
+        if (lastUpdateElement) {
+            const now = new Date();
+            lastUpdateElement.textContent = now.toLocaleTimeString('ar-EG', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    }
+
+    updateStats(stats) {
+        const statsElement = document.getElementById('lectureStats');
+        if (statsElement && stats) {
+            statsElement.textContent = `${stats.total_lectures || 0} محاضرة`;
+            statsElement.classList.remove('hidden');
+        }
+    }
+
+    // ------------------ جلب البيانات مع تحسينات ------------------
     async loadLectures() {
         try {
-            const response = await fetch("{{ route('admin.lectures.calendar-data') }}");
-            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-            this.lectures = await response.json();
+            this.setLoading(true);
+
+            // تنظيف البيانات القديمة
+            this.lectures = [];
+
+            const year = this.currentDate.getFullYear();
+            const month = this.currentDate.getMonth() + 1;
+            const start = `${year}-${month.toString().padStart(2, '0')}-01`;
+            const end = `${year}-${month.toString().padStart(2, '0')}-31`;
+
+            console.log(`🔄 جاري جلب البيانات للفترة: ${start} إلى ${end}`);
+
+            // تجربة الـ API الجديد أولاً
+            const response = await fetch(`/admin/dashboard/calendar-data?start=${start}&end=${end}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            console.log(`📡 Response Status: ${response.status}`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('📊 البيانات المستلمة:', data);
+
+            if (data.lectures && Array.isArray(data.lectures)) {
+                this.lectures = data.lectures;
+                this.updateStats(data.stats);
+                console.log(`✅ تم تحميل ${this.lectures.length} محاضرة`);
+            } else {
+                console.warn('⚠️ البيانات المستلمة لا تحتوي على مصفوفة محاضرات صحيحة');
+                throw new Error('صيغة البيانات غير صحيحة');
+            }
+
         } catch (error) {
-            console.warn("⚠️ خطأ في جلب المحاضرات، استخدام بيانات وهمية:", error);
+            console.error("❌ خطأ في جلب المحاضرات:", error);
+            console.warn("🔄 التبديل إلى البيانات التجريبية...");
             this.lectures = this.generateSampleData();
+            this.updateStats({ total_lectures: this.lectures.length });
         } finally {
+            this.setLoading(false);
             this.renderCalendar();
+            this.updateLastUpdateTime();
         }
     }
 
     generateSampleData() {
         const today = new Date();
-        return Array.from({ length: 10 }).map((_, i) => ({
-            id: i + 1,
-            title: `محاضرة اختبار ${i+1}`,
-            date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + i).toISOString().split("T")[0],
-            start_time: "09:00",
-            end_time: "11:00",
-            description: "محاضرة تجريبية",
-            teacher: { user: { name: "أ. محمد" } },
-            group: { id: 1, name: "المجموعة الأولى" },
-            is_today: i === 0,
-            has_started: false,
-            attendance_summary: { present: 15, total: 20, absent: 3, late: 2 }
-        }));
+        const sampleSubjects = ['رياضيات', 'فيزياء', 'كيمياء', 'عربي', 'إنجليزي'];
+        const sampleTeachers = ['أ. أحمد محمد', 'د. فاطمة علي', 'أ. محمود حسن', 'د. سارة أحمد'];
+
+        console.log("🧪 إنشاء بيانات تجريبية...");
+
+        return Array.from({ length: 15 }).map((_, i) => {
+            const date = new Date(today.getFullYear(), today.getMonth(), Math.floor(Math.random() * 28) + 1);
+            const subject = sampleSubjects[Math.floor(Math.random() * sampleSubjects.length)];
+            const teacher = sampleTeachers[Math.floor(Math.random() * sampleTeachers.length)];
+
+            return {
+                id: i + 1,
+                title: `محاضرة ${subject}`,
+                subject: subject,
+                date: date.toISOString().split('T')[0],
+                start_time: `${9 + Math.floor(Math.random() * 6)}:${Math.random() > 0.5 ? '00' : '30'}`,
+                end_time: `${11 + Math.floor(Math.random() * 4)}:${Math.random() > 0.5 ? '00' : '30'}`,
+                teacher: teacher,
+                group: `المجموعة ${String.fromCharCode(65 + Math.floor(Math.random() * 5))}`,
+                room: `قاعة ${Math.floor(Math.random() * 10) + 1}`,
+                students_count: Math.floor(Math.random() * 25) + 15
+            };
+        });
     }
 
-    // ------------------ العرض ------------------
+    // ------------------ العرض المُصحح ------------------
     renderCalendar() {
         const grid = document.getElementById("calendarGrid");
         const currentPeriod = document.getElementById("currentPeriod");
-        if (!grid || !currentPeriod) return;
 
-        if (this.currentView === "month") this.renderMonthView(grid, currentPeriod);
-        if (this.currentView === "week") this.renderWeekView(grid, currentPeriod);
-        if (this.currentView === "today") this.renderDayView(grid, currentPeriod);
+        if (!grid || !currentPeriod) {
+            console.error('❌ عناصر التقويم غير موجودة في DOM');
+            return;
+        }
 
+        console.log(`🎨 عرض التقويم - عدد المحاضرات: ${this.lectures.length}`);
+
+        this.renderMonthView(grid, currentPeriod);
         this.renderTodayLectures();
     }
 
@@ -818,112 +605,335 @@ class LecturesCalendar {
         startDate.setDate(startDate.getDate() - firstDay.getDay());
 
         let html = "";
-        this.dayNames.forEach(d => html += `<div class="calendar-day-header">${d}</div>`);
 
+        // إنشاء 42 خلية (6 أسابيع × 7 أيام)
         const current = new Date(startDate);
         for (let i = 0; i < 42; i++) {
             const isCurrentMonth = current.getMonth() === month;
             const isToday = this.isToday(current);
             const dayLectures = this.getLecturesForDate(current);
+            const lectureCount = dayLectures.length;
+
+            // إضافة log للأيام التي تحتوي على محاضرات
+            if (lectureCount > 0) {
+                console.log(`📅 ${current.toDateString()}: ${lectureCount} محاضرات`, dayLectures);
+            }
+
             html += `
-                <div class="calendar-day ${!isCurrentMonth ? "other-month" : ""} ${isToday ? "today" : ""}">
-                    <div class="day-number">${current.getDate()}</div>
-                    ${dayLectures.map(l => this.renderLectureItem(l)).join("")}
-                </div>`;
+                <div class="calendar-day relative min-h-[80px] p-2 border border-gray-200 hover:bg-gray-50 transition-all duration-200 cursor-pointer ${
+                    !isCurrentMonth ? 'bg-gray-50 text-gray-400 other-month' : 'bg-white'
+                } ${isToday ? 'bg-blue-50 border-blue-300 shadow-sm today' : ''}"
+                     data-date="${current.toISOString().split('T')[0]}"
+                     onmouseenter="window.lecturesCalendar.showDayTooltip(event, '${current.toISOString().split('T')[0]}')"
+                     onmouseleave="window.lecturesCalendar.hideTooltip()">
+
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium day-number ${isToday ? 'text-blue-600 font-bold' : ''}">${current.getDate()}</span>
+                        ${lectureCount > 0 ? `
+                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium text-white rounded-full ${
+                                lectureCount > 3 ? 'bg-red-500' : lectureCount > 1 ? 'bg-orange-500' : 'bg-green-500'
+                            }">
+                                ${lectureCount}
+                            </span>
+                        ` : ''}
+                    </div>
+
+                    ${lectureCount > 0 ? `
+                        <div class="space-y-1">
+                            ${dayLectures.slice(0, 2).map(lecture => `
+                                <div class="w-full h-1.5 rounded-full shadow-sm lecture-bar"
+                                     style="background-color: ${this.getSubjectColor(lecture.subject)}"
+                                     title="${lecture.subject}"></div>
+                            `).join('')}
+                            ${lectureCount > 2 ? `
+                                <div class="mt-1 text-xs text-center text-gray-500">+${lectureCount - 2}</div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
             current.setDate(current.getDate() + 1);
         }
 
         grid.innerHTML = html;
+        console.log(`✅ تم عرض التقويم - HTML length: ${html.length}`);
     }
 
-    renderWeekView(grid, currentPeriod) {
-        const startOfWeek = new Date(this.currentDate);
-        startOfWeek.setDate(this.currentDate.getDate() - this.currentDate.getDay());
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
+    showDayTooltip(event, date) {
+       const dayLectures = this.getLecturesForDate(new Date(date));
 
-        currentPeriod.textContent = `${startOfWeek.getDate()} - ${endOfWeek.getDate()} ${this.monthNames[startOfWeek.getMonth()]} ${startOfWeek.getFullYear()}`;
+        if (dayLectures.length === 0) return;
 
-        let html = "";
-        this.dayNames.forEach(d => html += `<div class="calendar-day-header">${d}</div>`);
+        const dateObj = new Date(date);
+        const dayName = this.dayNames[dateObj.getDay()];
+        const dayNumber = dateObj.getDate();
 
-        const current = new Date(startOfWeek);
-        for (let i = 0; i < 7; i++) {
-            const isToday = this.isToday(current);
-            const dayLectures = this.getLecturesForDate(current);
-            html += `
-                <div class="calendar-day ${isToday ? "today" : ""}">
-                    <div class="day-number">${current.getDate()}</div>
-                    ${dayLectures.map(l => this.renderLectureItem(l)).join("")}
-                </div>`;
-            current.setDate(current.getDate() + 1);
+        dayLectures.sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+        this.tooltip.innerHTML = `
+        <div class="pb-2 mb-3 text-center border-b border-gray-700">
+            <div class="font-bold text-blue-300">${dayName}</div>
+            <div class="text-xs text-gray-300">${dayNumber} ${this.monthNames[dateObj.getMonth()]}</div>
+        </div>
+        <div class="space-y-2 overflow-y-auto max-h-64">
+            ${dayLectures.map(lecture => `
+            <div class="flex items-start p-2 space-x-2 space-x-reverse text-xs bg-gray-800 rounded">
+                <div class="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                    style="background-color: ${this.getSubjectColor(lecture.subject)}"></div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-white truncate">${lecture.subject || lecture.title}</div>
+                    <div class="text-gray-300">⏰ ${this.formatTimeDisplay(lecture.start_time)} - ${this.formatTimeDisplay(lecture.end_time)}</div>
+                    <div class="text-gray-400 truncate">👨‍🏫 ${lecture.teacher}</div>
+                    <div class="text-gray-400 truncate">📚 ${lecture.group}</div>
+                </div>
+            </div>
+            `).join('')}
+        </div>
+        `;
+
+        this.tooltip.classList.remove('hidden');
+
+        // تحديد موضع الـ tooltip
+        const rect = event.currentTarget.getBoundingClientRect();
+        let top = rect.top + window.scrollY - 10;
+        let left = rect.right + window.scrollX + 10;
+
+        // التأكد من أن الـ tooltip داخل الشاشة
+        if (left + 300 > window.innerWidth) {
+            left = rect.left + window.scrollX - 310;
         }
-        grid.innerHTML = html;
+        if (top < 10) {
+            top = rect.bottom + window.scrollY + 10;
+        }
+
+        this.tooltip.style.top = `${top}px`;
+        this.tooltip.style.left = `${left}px`;
     }
 
-    renderDayView(grid, currentPeriod) {
-        const d = this.currentDate;
-        currentPeriod.textContent = `${d.getDate()} ${this.monthNames[d.getMonth()]} ${d.getFullYear()}`;
-        const dayLectures = this.getLecturesForDate(d);
+    formatTimeDisplay(time) {
+    if (!time) return '09:00';
 
-        let html = '<div class="calendar-day-header">اليوم</div>';
-        html += `<div class="calendar-day today" style="grid-column:1/-1;min-height:200px;">${dayLectures.map(l => this.renderDetailedLectureItem(l)).join("")}</div>`;
-        grid.innerHTML = html;
+    // إذا كان ISO string
+    if (typeof time === 'string' && time.includes('T')) {
+        try {
+            const date = new Date(time);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const period = date.getHours() >= 12 ? 'مساءً' : 'صباحاً';
+            let displayHour = date.getHours();
+
+            // تحويل للنظام 12 ساعة
+            if (displayHour === 0) displayHour = 12;
+            else if (displayHour > 12) displayHour = displayHour - 12;
+
+            return `${displayHour}:${minutes} ${period}`;
+        } catch (e) {
+            return time.substring(0, 5);
+        }
     }
 
-    renderLectureItem(l) {
-        const color = this.groupColors[(l.group.id - 1) % this.groupColors.length];
-        return `<div class="lecture-item" style="background:${color}" data-lecture='${JSON.stringify(l)}'>${l.start_time} ${l.title}</div>`;
+    // إذا كان وقت بسيط
+    if (typeof time === 'string' && time.includes(':')) {
+        const [hours, minutes] = time.split(':');
+        const hour24 = parseInt(hours);
+        const period = hour24 >= 12 ? 'مساءً' : 'صباحاً';
+        let displayHour = hour24;
+
+        if (displayHour === 0) displayHour = 12;
+        else if (displayHour > 12) displayHour = displayHour - 12;
+
+        return `${displayHour}:${minutes} ${period}`;
     }
 
-    renderDetailedLectureItem(l) {
-        return `<div class="p-3 mb-2 text-sm bg-blue-100 rounded">${l.start_time} - ${l.end_time} | ${l.title}<br><span class="text-gray-600">${l.group.name} • ${l.teacher.user.name}</span></div>`;
-    }
+    return time;
+}
 
     renderTodayLectures() {
         const todayLectures = this.getLecturesForDate(new Date());
         const container = document.getElementById("todayLectures");
-        if (!container) return;
-        container.innerHTML = todayLectures.length
-            ? todayLectures.map(l => `<li>${l.start_time} - ${l.end_time} | ${l.title} (${l.group.name})</li>`).join("")
-            : "<li>لا توجد محاضرات اليوم</li>";
+
+        if (!container) {
+            console.error('❌ عنصر todayLectures غير موجود');
+            return;
+        }
+
+        console.log(`📋 محاضرات اليوم: ${todayLectures.length}`);
+
+        if (todayLectures.length === 0) {
+            container.innerHTML = `
+                <div class="py-8 text-center text-gray-500">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p class="font-medium text-gray-600">لا توجد محاضرات اليوم</p>
+                    <p class="mt-1 text-sm text-gray-500">استمتع بيومك الحر! 🌟</p>
+                </div>
+            `;
+            return;
+        }
+
+        todayLectures.sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+        container.innerHTML = `
+            <div class="space-y-3">
+                ${todayLectures.map((lecture, index) => `
+                    <div class="flex items-center p-4 bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.01]">
+                        <div class="flex-shrink-0 w-3 h-12 mr-3 rounded-full shadow-sm"
+                             style="background: linear-gradient(to bottom, ${this.getSubjectColor(lecture.subject)}, ${this.getSubjectColor(lecture.subject)}88)"></div>
+
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm font-semibold text-gray-900 truncate">${lecture.title}</p>
+                                <span class="px-2 py-1 text-xs text-gray-500 bg-gray-100 rounded-full">${lecture.room || 'غير محدد'}</span>
+                            </div>
+                            <p class="flex items-center mt-1 text-xs text-gray-600">
+                                <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                ${lecture.start_time} - ${lecture.end_time}
+                                <span class="mr-2">👨‍🏫 ${lecture.teacher}</span>
+                                <span class="mr-2">📚 ${lecture.group}</span>
+                            </p>
+                            <div class="flex items-center justify-between mt-2">
+                                <div class="flex items-center text-xs text-gray-500">
+                                    <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m3 5.197H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    ${lecture.students_count || 0} طالب
+                                </div>
+                                <div class="text-xs">
+                                    <span class="inline-flex items-center px-2 py-1 text-green-800 bg-green-100 rounded-full">
+                                        مجدولة
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
 
-    // ------------------ الأدوات ------------------
+    // ------------------ دوال مساعدة ------------------
+    getSubjectColor(subject) {
+        return this.subjectColors[subject] || this.subjectColors.default;
+    }
+
     getLecturesForDate(d) {
-        return this.lectures.filter(l => l.date === d.toISOString().split("T")[0]);
-    }
-    isToday(d) { return d.toDateString() === new Date().toDateString(); }
-
-    showTooltip(e) {
-        const lecture = JSON.parse(e.target.dataset.lecture);
-        this.tooltip.innerHTML = `<strong>${lecture.title}</strong><br>⏰ ${lecture.start_time} - ${lecture.end_time}<br>👨‍🏫 ${lecture.teacher.user.name}`;
-        this.tooltip.classList.remove("hidden");
-        this.tooltip.style.top = (e.pageY + 10) + "px";
-        this.tooltip.style.left = (e.pageX + 10) + "px";
-    }
-    hideTooltip() { this.tooltip?.classList.add("hidden"); }
-
-    openModal(l) {
-        const modal = document.getElementById("lectureModal");
-        const content = document.getElementById("lectureModalContent");
-        content.innerHTML = `<p><strong>${l.title}</strong></p><p>المعلم: ${l.teacher.user.name}</p><p>المجموعة: ${l.group.name}</p>`;
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
+        const dateStr = d.toISOString().split("T")[0];
+        const filtered = this.lectures.filter(l => l.date === dateStr);
+        // console.log(`🔍 البحث عن محاضرات في ${dateStr}: وجدت ${filtered.length}`);
+        return filtered;
     }
 
-    // ------------------ التنقل ------------------
+    isToday(d) {
+        return d.toDateString() === new Date().toDateString();
+    }
+
+    hideTooltip() {
+        if (this.tooltip) {
+            this.tooltip.classList.add("hidden");
+        }
+    }
+
     previousPeriod() {
-        if (this.currentView === "month") this.currentDate.setMonth(this.currentDate.getMonth() - 1);
-        if (this.currentView === "week") this.currentDate.setDate(this.currentDate.getDate() - 7);
-        if (this.currentView === "today") this.currentDate.setDate(this.currentDate.getDate() - 1);
-        this.renderCalendar();
+        if (this.isLoading) return;
+        this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+        this.loadLectures();
     }
+
     nextPeriod() {
-        if (this.currentView === "month") this.currentDate.setMonth(this.currentDate.getMonth() + 1);
-        if (this.currentView === "week") this.currentDate.setDate(this.currentDate.getDate() + 7);
-        if (this.currentView === "today") this.currentDate.setDate(this.currentDate.getDate() + 1);
-        this.renderCalendar();
+        if (this.isLoading) return;
+        this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+        this.loadLectures();
+    }
+
+    refresh() {
+        if (this.isLoading) return;
+        console.log('🔄 تحديث البيانات...');
+        this.loadLectures();
+    }
+
+    // اختبار الاتصال بالـ API
+    async testAPI() {
+        try {
+            console.log('🧪 اختبار الاتصال بالـ API...');
+            const response = await fetch('/admin/dashboard/calendar-data', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            console.log('📡 حالة الاستجابة:', response.status);
+            const data = await response.json();
+            console.log('📊 بيانات الاختبار:', data);
+
+            return data;
+        } catch (error) {
+            console.error('❌ خطأ في اختبار API:', error);
+            return null;
+        }
+    }
+
+    addCustomStyles() {
+        if (document.getElementById('dashboard-calendar-styles')) return;
+
+        const styleElement = document.createElement('style');
+        styleElement.id = 'dashboard-calendar-styles';
+        styleElement.textContent = `
+            .calendar-day {
+                position: relative;
+                overflow: hidden;
+                transition: all 0.2s ease;
+            }
+
+            .calendar-day:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            }
+
+            .calendar-day.today::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+                border-radius: 4px 4px 0 0;
+            }
+
+            .lecture-bar {
+                transition: all 0.2s ease;
+            }
+
+            .calendar-day:hover .lecture-bar {
+                transform: scaleY(1.2);
+            }
+
+            #dashboardTooltip {
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255,255,255,0.1);
+                box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+                z-index: 1000;
+            }
+
+            #dashboardTooltip::before {
+                content: '';
+                position: absolute;
+                bottom: -8px;
+                left: 20px;
+                width: 0;
+                height: 0;
+                border-left: 8px solid transparent;
+                border-right: 8px solid transparent;
+                border-top: 8px solid rgb(17, 24, 39);
+            }
+        `;
+        document.head.appendChild(styleElement);
     }
 }
 
@@ -931,7 +941,19 @@ class LecturesCalendar {
 document.addEventListener("DOMContentLoaded", () => {
     if (document.getElementById("calendarGrid")) {
         window.lecturesCalendar = new LecturesCalendar();
-        console.log("📅 تم تحميل تقويم المحاضرات");
+        console.log("📅 تم تحميل تقويم المحاضرات المحسن للـ Dashboard");
+
+        // إضافة دالة اختبار لـ Console
+        window.testCalendarAPI = () => window.lecturesCalendar.testAPI();
+
+        // تحديث تلقائي كل 5 دقائق
+        setInterval(() => {
+            if (window.lecturesCalendar && !window.lecturesCalendar.isLoading) {
+                window.lecturesCalendar.refresh();
+            }
+        }, 300000);
+    } else {
+        console.error('❌ عنصر calendarGrid غير موجود في الصفحة');
     }
 });
 </script>

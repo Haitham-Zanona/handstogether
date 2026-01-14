@@ -55,6 +55,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
+        Route::prefix('dashboard')->name('dashboard.')->group(function () {
+            // API بيانات التقويم المحسن للـ Dashboard
+            Route::get('/calendar-data', [AdminController::class, 'getDashboardCalendarData'])->name('calendar-data');
+
+            // API الإحصائيات السريعة للـ Dashboard (اختياري)
+            Route::get('/quick-stats', [AdminController::class, 'getDashboardQuickStats'])->name('quick-stats');
+        });
+
         // ========== طلبات الانتساب - Routes الخاصة أولاً ==========
         // هذه يجب أن تأتي قبل resource routes
 

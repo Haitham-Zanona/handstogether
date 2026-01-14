@@ -91,6 +91,53 @@
                 opacity: 0.5;
             }
         }
+
+        .primary-dark {
+            background-color: #1e40af;
+            /* أو أي لون أغمق من primary */
+        }
+
+        /* تحسينات إضافية */
+        #sidebar {
+            backdrop-filter: blur(8px);
+        }
+
+        @media (max-width: 1024px) {
+
+            /* إخفاء القائمة في الموبايل افتراضياً */
+            #sidebar {
+                transform: translateX(100%);
+            }
+
+            /* تعديل المحتوى الرئيسي للموبايل */
+            .main-content {
+                margin-right: 0;
+                padding-top: 80px;
+                /* مساحة لزر التحكم */
+            }
+        }
+
+        @media (min-width: 1024px) {
+
+            /* إظهار القائمة في الحاسوب */
+            #sidebar {
+                transform: translateX(0);
+                position: relative;
+            }
+
+            #sidebarToggle {
+                display: none;
+            }
+        }
+
+        /* تحسين الرسوم المتحركة */
+        #sidebar {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #sidebarOverlay {
+            transition: opacity 0.3s ease;
+        }
     </style>
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -99,7 +146,8 @@
 <body class="bg-gray-100">
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <aside class="flex-shrink-0 w-64 overflow-y-auto text-white bg-primary custom-scrollbar">
+        @yield('sidebar-menu')
+        {{-- <aside class="flex-shrink-0 w-64 overflow-y-auto text-white bg-primary custom-scrollbar">
             <!-- Logo -->
             <div class="p-6 border-b border-blue-600">
                 <div class="text-2xl font-bold">{{ $sidebarTitle ?? 'لوحة التحكم' }}</div>
@@ -125,7 +173,7 @@
                     </div>
                 </div>
             </div>
-        </aside>
+        </aside> --}}
 
         <!-- Main Content -->
         <div class="flex flex-col flex-1 min-w-0">
@@ -362,6 +410,76 @@
                 userMenuDropdown.classList.add('hidden');
             }
         });
+
+        document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarClose = document.getElementById('sidebarClose');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        const line1 = document.getElementById('line1');
+        const line2 = document.getElementById('line2');
+        const line3 = document.getElementById('line3');
+
+        let isOpen = false;
+
+        // دالة إظهار القائمة
+        function showSidebar() {
+        isOpen = true;
+        sidebar.classList.remove('translate-x-full');
+        sidebar.classList.add('translate-x-0');
+        sidebarOverlay.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+
+        // تحويل الخطوط إلى X
+        line1.style.transform = 'rotate(45deg) translate(6px, 6px)';
+        line2.style.opacity = '0';
+        line3.style.transform = 'rotate(-45deg) translate(6px, -6px)';
+        }
+
+        // دالة إخفاء القائمة
+        function hideSidebar() {
+        isOpen = false;
+        sidebar.classList.add('translate-x-full');
+        sidebar.classList.remove('translate-x-0');
+        sidebarOverlay.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+
+        // إرجاع الخطوط إلى وضعها الطبيعي
+        line1.style.transform = 'rotate(0) translate(0, 0)';
+        line2.style.opacity = '1';
+        line3.style.transform = 'rotate(0) translate(0, 0)';
+        }
+
+        // زر Toggle
+        sidebarToggle.addEventListener('click', function() {
+        if (isOpen) {
+        hideSidebar();
+        } else {
+        showSidebar();
+        }
+        });
+
+        // زر الإغلاق
+        sidebarClose.addEventListener('click', hideSidebar);
+
+        // النقر على الـ Overlay
+        sidebarOverlay.addEventListener('click', hideSidebar);
+
+        // إغلاق القائمة عند النقر على أي رابط (للموبايل)
+        const sidebarLinks = sidebar.querySelectorAll('a');
+        sidebarLinks.forEach(link => { link.addEventListener('click', function() {
+        if (window.innerWidth < 1024) { // lg breakpoint
+        hideSidebar();
+    }
+});
+}); // إغلاق القائمة عند تغيير حجم الشاشة للحاسوب
+            window.addEventListener('resize', function() { if (window.innerWidth>= 1024) {
+            hideSidebar();
+            document.body.classList.remove('overflow-hidden');
+            }
+            });
+            });
 
         // Mark notification as read
         document.querySelectorAll('.notification-item').forEach(item => {

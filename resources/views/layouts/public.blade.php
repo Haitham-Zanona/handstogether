@@ -204,19 +204,19 @@
                                 class="absolute left-0 invisible w-48 mt-2 transition-all duration-300 bg-white rounded-md shadow-lg opacity-0 group-hover:opacity-100 group-hover:visible">
                                 <div class="py-1">
                                     <a href="{{ route('portal.admin') }}"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-primary hover:text-white">
+                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
                                         بوابة الإداريين
                                     </a>
                                     <a href="{{ route('portal.teacher') }}"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-primary hover:text-white">
+                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
                                         بوابة المدرسين
                                     </a>
                                     <a href="{{ route('portal.parent') }}"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-primary hover:text-white">
+                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
                                         بوابة أولياء الأمور
                                     </a>
                                     <a href="{{ route('portal.student') }}"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-primary hover:text-white">
+                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
                                         بوابة الطلبة
                                     </a>
                                 </div>
