@@ -126,6 +126,20 @@ class NotificationService
     }
 
     /**
+     * إشعار ولي أمر طالب محدد عن نسبة حضور منخفضة
+     */
+    public static function notifyLowAttendanceForStudent($student, float $rate): void
+    {
+        if ($student->parent) {
+            $student->parent->notify(new AcademyNotification(
+                "تنبيه: نسبة حضور الطالب {$student->user->name} منخفضة ({$rate}%)",
+                route('parent.attendance'),
+                'warning'
+            ));
+        }
+    }
+
+    /**
      * إشعار عن طلب انتساب جديد
      */
     public static function notifyNewAdmission($admission)

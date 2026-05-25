@@ -52,13 +52,19 @@ class Student extends Model
 
     public function getAttendancePercentage()
     {
-        $totalLectures = $this->group?->lectures()->count() ?? 0;
+        // Only count non-cancelled lectures up to today (past/present only)
+        $totalLectures = $this->group?->lectures()
+            ->whereNotIn('status', ['cancelled'])
+            ->where('date', '<=', today())
+            ->count() ?? 0;
+
         if ($totalLectures === 0) {
             return 0;
         }
 
+        // Count present + late as positive attendance
         $presentCount = $this->attendance()
-            ->where('status', 'present')
+            ->whereIn('status', ['present', 'late'])
             ->count();
 
         return round(($presentCount / $totalLectures) * 100, 2);

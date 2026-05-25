@@ -1257,26 +1257,212 @@ class AdminController extends Controller
 
     public function attendance()
     {
-        $groups = Group::with([
-            'students.user',
-            'students.attendance' => function ($q) {
-                $q->whereHas('lecture', function ($query) {
-                    $query->whereMonth('date', now()->month);
-                });
-            },
-        ])->get();
+        $groups = Group::select('id', 'name')->orderBy('name')->get();
+        return view('admin.attendance', compact('groups'));
+    }
 
-        $attendanceStats = [
-            'total_lectures'   => Lecture::whereMonth('date', now()->month)->count(),
-            'total_attendance' => Attendance::whereHas('lecture', function ($q) {
-                $q->whereMonth('date', now()->month);
-            })->count(),
-            'present_count'    => Attendance::present()->whereHas('lecture', function ($q) {
-                $q->whereMonth('date', now()->month);
-            })->count(),
-        ];
+    public function getAttendanceData(Request $request)
+    {
+        try {
+            $month   = $request->get('month', now()->format('Y-m'));
+            $groupId = $request->get('group_id');
 
-        return view('admin.attendance', compact('groups', 'attendanceStats'));
+            // Lectures for this month that are not cancelled and already past/today
+            $lectureIds = Lecture::whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month])
+                ->whereNotIn('status', ['cancelled'])
+                ->where('date', '<=', today())
+                ->pluck('id');
+
+            $totalLectures = $lectureIds->count();
+
+            // Students — optionally filtered by group
+            $studentsQuery = Student::with('user')
+                ->when($groupId, fn($q) => $q->where('group_id', $groupId))
+                ->whereNotNull('group_id');
+
+            $students = $studentsQuery->get();
+
+            // Bulk attendance: one query for all students/lectures
+            $allAttendance = $totalLectures > 0
+                ? Attendance::whereIn('lecture_id', $lectureIds)
+                    ->whereIn('student_id', $students->pluck('id'))
+                    ->selectRaw('student_id, status, count(*) as cnt')
+                    ->groupBy('student_id', 'status')
+                    ->get()
+                    ->groupBy('student_id')
+                : collect();
+
+            $studentsData = $students->map(function ($student) use ($totalLectures, $allAttendance) {
+                $records      = $allAttendance->get($student->id, collect());
+                $presentCount = $records->firstWhere('status', 'present')?->cnt ?? 0;
+                $lateCount    = $records->firstWhere('status', 'late')?->cnt    ?? 0;
+                $absentCount  = $records->firstWhere('status', 'absent')?->cnt  ?? 0;
+                $positiveRate = $totalLectures > 0
+                    ? round(($presentCount + $lateCount) / $totalLectures * 100, 1)
+                    : 0;
+
+                return [
+                    'id'             => $student->id,
+                    'name'           => $student->user->name ?? 'غير محدد',
+                    'group_id'       => $student->group_id,
+                    'total_lectures' => $totalLectures,
+                    'present'        => $presentCount,
+                    'late'           => $lateCount,
+                    'absent'         => $absentCount,
+                    'not_recorded'   => max(0, $totalLectures - $presentCount - $lateCount - $absentCount),
+                    'rate'           => $positiveRate,
+                    'low_attendance' => $positiveRate < 75,
+                ];
+            });
+
+            $totalStudents = $studentsData->count();
+            $avgRate       = $totalStudents > 0
+                ? round($studentsData->avg('rate'), 1)
+                : 0;
+
+            return response()->json([
+                'success'  => true,
+                'summary'  => [
+                    'total_students'      => $totalStudents,
+                    'total_lectures'      => $totalLectures,
+                    'avg_rate'            => $avgRate,
+                    'low_attendance_count' => $studentsData->where('low_attendance', true)->count(),
+                    'present_total'       => $studentsData->sum('present'),
+                    'absent_total'        => $studentsData->sum('absent'),
+                    'late_total'          => $studentsData->sum('late'),
+                ],
+                'students' => $studentsData->values(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في جلب بيانات الحضور: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getStudentAttendanceDetail(Request $request, $studentId)
+    {
+        try {
+            $month   = $request->get('month', now()->format('Y-m'));
+            $student = Student::with('user')->findOrFail($studentId);
+
+            $lectures = Lecture::whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month])
+                ->where('group_id', $student->group_id)
+                ->whereNotIn('status', ['cancelled'])
+                ->orderBy('date')
+                ->orderBy('start_time')
+                ->get();
+
+            $attendanceByLecture = Attendance::where('student_id', $studentId)
+                ->whereIn('lecture_id', $lectures->pluck('id'))
+                ->pluck('status', 'lecture_id');
+
+            $records = $lectures->map(fn($lecture) => [
+                'lecture_id'   => $lecture->id,
+                'title'        => $lecture->title,
+                'date'         => $lecture->date->format('Y-m-d'),
+                'start_time'   => is_string($lecture->start_time)
+                    ? $lecture->start_time
+                    : $lecture->start_time?->format('H:i'),
+                'status'       => $attendanceByLecture->get($lecture->id, 'not_recorded'),
+                'is_past'      => $lecture->date->lte(today()),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'student' => [
+                    'id'   => $student->id,
+                    'name' => $student->user->name ?? 'غير محدد',
+                ],
+                'records' => $records,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في جلب تفاصيل الطالب: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getLectureAttendanceStudents(Lecture $lecture)
+    {
+        $students = $lecture->group?->students()->with('user')->get() ?? collect();
+
+        $existing = Attendance::where('lecture_id', $lecture->id)
+            ->pluck('status', 'student_id');
+
+        return response()->json([
+            'success'           => true,
+            'lecture'           => [
+                'id'         => $lecture->id,
+                'title'      => $lecture->title,
+                'date'       => $lecture->date->format('Y-m-d'),
+                'group_name' => $lecture->group?->name ?? '—',
+            ],
+            'students'          => $students->map(fn($s) => [
+                'id'   => $s->id,
+                'name' => $s->user?->name ?? 'غير محدد',
+            ]),
+            'existing_statuses' => $existing,
+        ]);
+    }
+
+    public function storeLectureAttendance(Request $request, Lecture $lecture)
+    {
+        if ($lecture->date->gt(today())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يمكن تسجيل حضور لمحاضرة مستقبلية',
+            ], 400);
+        }
+
+        $validated = $request->validate([
+            'attendance'   => 'required|array',
+            'attendance.*' => 'required|in:present,absent,late',
+        ]);
+
+        foreach ($validated['attendance'] as $studentId => $status) {
+            Attendance::updateOrCreate(
+                ['student_id' => $studentId, 'lecture_id' => $lecture->id],
+                ['status' => $status]
+            );
+        }
+
+        $count = count($validated['attendance']);
+
+        return response()->json([
+            'success' => true,
+            'message' => "تم حفظ الحضور بنجاح لـ {$count} طالب",
+        ]);
+    }
+
+    public function notifyStudentLowAttendance($studentId)
+    {
+        try {
+            $student = Student::with(['user', 'parent'])->findOrFail($studentId);
+
+            if (! $student->parent) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا يوجد ولي أمر مرتبط بهذا الطالب',
+                ], 400);
+            }
+
+            $rate = $student->getAttendancePercentage();
+
+            NotificationService::notifyLowAttendanceForStudent($student, $rate);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال التنبيه لولي أمر ' . ($student->user->name ?? ''),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في إرسال التنبيه: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function payments()

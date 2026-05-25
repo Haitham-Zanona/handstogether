@@ -63,17 +63,26 @@ class TeacherController extends Controller
         return view('teacher.students', compact('students'));
     }
 
-    public function attendance()
+    public function attendance(Request $request)
     {
         $teacher = auth()->user()->teacher;
 
-        $todayLectures = $teacher->lectures()
-            ->whereDate('date', today())
+        $date = $request->get('date', today()->format('Y-m-d'));
+
+        // لا نسمح بتاريخ مستقبلي
+        if ($date > today()->format('Y-m-d')) {
+            $date = today()->format('Y-m-d');
+        }
+
+        $selectedDate = \Carbon\Carbon::parse($date);
+
+        $lectures = $teacher->lectures()
+            ->whereDate('date', $selectedDate)
             ->with(['group.students.user', 'attendance'])
             ->orderBy('start_time')
             ->get();
 
-        return view('teacher.attendance', compact('todayLectures'));
+        return view('teacher.attendance', compact('lectures', 'date'));
     }
 
     public function markAttendance(Request $request, Lecture $lecture)

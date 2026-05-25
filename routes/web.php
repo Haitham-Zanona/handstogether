@@ -181,12 +181,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::patch('/{lecture}/reschedule', [AdminController::class, 'rescheduleLecture'])->name('reschedule');
             Route::patch('/{lecture}/cancel', [AdminController::class, 'cancelLecture'])->name('cancel');
 
+            // تسجيل الحضور من الأدمن
+            Route::get('/{lecture}/attendance-students', [AdminController::class, 'getLectureAttendanceStudents'])->name('attendance-students');
+            Route::post('/{lecture}/attendance', [AdminController::class, 'storeLectureAttendance'])->name('attendance.store');
+
             Route::get('/teachers', [AdminController::class, 'getAvailableTeachers'])->name('teachers');
             Route::get('/active-series', [AdminController::class, 'getActiveSeries'])->name('active-series');
         });
 
         // Other Admin Routes
         Route::get('/attendance', [AdminController::class, 'attendance'])->name('attendance');
+        Route::prefix('attendance')->name('attendance.')->group(function () {
+            Route::get('/data', [AdminController::class, 'getAttendanceData'])->name('data');
+            Route::get('/student/{studentId}', [AdminController::class, 'getStudentAttendanceDetail'])->name('student');
+            Route::post('/notify/{studentId}', [AdminController::class, 'notifyStudentLowAttendance'])->name('notify');
+        });
         Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
         Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
 
@@ -225,6 +234,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/students', [TeacherController::class, 'students'])->name('students');
         Route::get('/attendance', [TeacherController::class, 'attendance'])->name('attendance');
         Route::get('/reports', [TeacherController::class, 'reports'])->name('reports');
+        Route::post('/lectures/{lecture}/mark-attendance', [TeacherController::class, 'markAttendance'])->name('lectures.mark-attendance');
+        Route::post('/lectures/{lecture}/bulk-present', [TeacherController::class, 'bulkMarkPresent'])->name('lectures.bulk-present');
     });
 
     // Parent routes
