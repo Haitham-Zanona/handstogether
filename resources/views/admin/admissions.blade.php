@@ -1085,18 +1085,6 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
             const tableBody = document.getElementById('admissionsTableBody');
             if (!tableBody) return;
 
-            // 🔍 كود التشخيص - احذفه بعد حل المشكلة
-            console.log('=== فحص بيانات الطلبات ===');
-            if (admissions.length > 0) {
-            console.log('أول طلب في البيانات:', admissions[0]);
-            console.log('هل يوجد group؟', admissions[0].group);
-            console.log('هل يوجد group_id؟', admissions[0].group_id);
-
-            // فحص جميع المفاتيح المتاحة
-            console.log('جميع المفاتيح المتاحة:', Object.keys(admissions[0]));
-            }
-            // نهاية كود التشخيص
-
             tableBody.innerHTML = '';
 
             if (admissions.length === 0) {
@@ -1128,13 +1116,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
             }
             row.style.backgroundColor = '#fff3cd';
 
-            // 🔍 تشخيص عمود المجموعة
             let groupDisplay = '';
-            console.log(`الطلب ${admission.id}:`, {
-            group: admission.group,
-            group_id: admission.group_id,
-            group_name: admission.group_name
-            });
 
             if (admission.group && admission.group.name) {
             groupDisplay = `<div class="text-sm text-gray-900">${admission.group.name}</div>`;
@@ -1760,25 +1742,28 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                         }
                     });
 
-                    if (response.ok) {
-                        const result = await response.json();
-                        if (result.success) {
-                            showNotification('تم حفظ البيانات بنجاح!', 'success');
-                            closeAddAdmissionModal();
-                            showSuccessModal();
-                            setTimeout(() => location.reload(), 2000);
-                            return;
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        showNotification('تم حفظ البيانات بنجاح!', 'success');
+                        closeAddAdmissionModal();
+                        showSuccessModal();
+                        setTimeout(() => location.reload(), 2000);
+                    } else if (response.status === 422) {
+                        const errors = result.errors;
+                        if (errors && typeof errors === 'object') {
+                            const firstKey = Object.keys(errors)[0];
+                            const firstMsg = Array.isArray(errors[firstKey]) ? errors[firstKey][0] : errors[firstKey];
+                            showNotification(firstMsg, 'error');
                         } else {
-                            throw new Error(result.message || 'فشل في حفظ البيانات');
+                            showNotification(result.message || 'يرجى مراجعة البيانات المدخلة', 'error');
                         }
                     } else {
-                        throw new Error('فشل في الاتصال بالخادم');
+                        showNotification(result.message || 'حدث خطأ أثناء حفظ البيانات', 'error');
                     }
                 } catch (error) {
-                    console.warn('تم الحفظ محلياً:', error.message);
-                    showNotification('تم حفظ البيانات محلياً: ' + error.message, 'warning');
-                    closeAddAdmissionModal();
-                    showSuccessModal();
+                    console.error('خطأ في إرسال النموذج:', error);
+                    showNotification('حدث خطأ في الاتصال بالخادم، يرجى المحاولة مرة أخرى', 'error');
                 } finally {
                     submitBtn.textContent = originalText;
                     submitBtn.disabled = false;
@@ -1831,60 +1816,55 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
             }
         };
 
-        window.exportAsPDF = function() {
+        window.exportAsPDF = async function() {
             try {
-                showNotification('جاري إنشاء ملف PDF...', 'info', 2000);
+                showNotification('جاري إنشاء ملف PDF...', 'info', 3000);
 
-                if (typeof jsPDF === 'undefined' && !window.jspdf) {
+                if (typeof html2canvas === 'undefined') {
+                    showNotification('مكتبة html2canvas غير متوفرة', 'error');
+                    return;
+                }
+
+                if (!window.jspdf && typeof jsPDF === 'undefined') {
                     showNotification('مكتبة jsPDF غير متوفرة', 'error');
                     return;
                 }
 
+                const dataElement = createDataDisplay();
+                document.body.appendChild(dataElement);
+
+                const canvas = await html2canvas(dataElement, {
+                    allowTaint: true,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    logging: false,
+                });
+
+                document.body.removeChild(dataElement);
+
                 const { jsPDF } = window.jspdf || { jsPDF: jsPDF };
-                const doc = new jsPDF();
+                const imgData   = canvas.toDataURL('image/png');
 
-                doc.setFont('helvetica');
-                doc.setFontSize(16);
-                doc.text('طلب انتساب جديد', 105, 20, { align: 'center' });
+                // A4 dimensions in mm
+                const pageW  = 210;
+                const pageH  = 297;
+                const imgH   = (canvas.height * pageW) / canvas.width;
 
-                let yPos = 40;
-                const lineHeight = 10;
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-                doc.setFontSize(14);
-                doc.text('بيانات الطالب:', 20, yPos);
-                yPos += lineHeight;
+                let remaining = imgH;
+                let offset    = 0;
 
-                doc.setFontSize(12);
-                doc.text(`الاسم: ${savedAdmissionData.student_name || 'غير محدد'}`, 25, yPos);
-                yPos += lineHeight;
-                doc.text(`رقم الهوية: ${savedAdmissionData.student_id || 'غير محدد'}`, 25, yPos);
-                yPos += lineHeight;
-                doc.text(`المرحلة الدراسية: ${savedAdmissionData.grade || 'غير محدد'}`, 25, yPos);
-                yPos += lineHeight * 2;
+                doc.addImage(imgData, 'PNG', 0, offset, pageW, imgH);
+                remaining -= pageH;
 
-                doc.setFontSize(14);
-                doc.text('بيانات ولي الأمر:', 20, yPos);
-                yPos += lineHeight;
-
-                doc.setFontSize(12);
-                doc.text(`الاسم: ${savedAdmissionData.parent_name || 'غير محدد'}`, 25, yPos);
-                yPos += lineHeight;
-                doc.text(`المهنة: ${savedAdmissionData.parent_job || 'غير محدد'}`, 25, yPos);
-                yPos += lineHeight;
-                doc.text(`رقم الجوال: ${savedAdmissionData.father_phone || 'غير محدد'}`, 25, yPos);
-                yPos += lineHeight * 2;
-
-                doc.setFontSize(14);
-                doc.text('المعلومات المالية:', 20, yPos);
-                yPos += lineHeight;
-
-                doc.setFontSize(12);
-                doc.text(`المبلغ المدفوع: ${savedAdmissionData.monthly_fee || '0'} شيكل`, 25, yPos);
-                yPos += lineHeight;
-                doc.text(`تاريخ بدء الدراسة: ${savedAdmissionData.study_start_date || 'غير محدد'}`, 25, yPos);
-
-                doc.setFontSize(10);
-                doc.text(`تاريخ الإنشاء: ${new Date().toLocaleDateString('ar-PS')}`, 20, 280);
+                while (remaining > 0) {
+                    offset -= pageH;
+                    doc.addPage();
+                    doc.addImage(imgData, 'PNG', 0, offset, pageW, imgH);
+                    remaining -= pageH;
+                }
 
                 const fileName = `طلب_انتساب_${savedAdmissionData.student_name || 'جديد'}_${Date.now()}.pdf`;
                 doc.save(fileName);

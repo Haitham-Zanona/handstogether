@@ -154,18 +154,6 @@ class NotificationService
     }
 
     /**
-     * إشعار عن رفض طلب انتساب
-     */
-    public static function notifyAdmissionRejected($admission, $reason = null)
-    {
-        // We need to create a temporary user object to send notification, 
-        // because the user is not created yet.
-        $user = new User();
-        $user->email = $admission->email; // Assuming admission has an email
-        $user->notify(AcademyNotification::admissionRejected($admission->student_name, $reason));
-    }
-
-    /**
      * إشعار عن غياب طالب
      */
     public static function notifyStudentAbsence($student, $lecture)
@@ -220,16 +208,13 @@ class NotificationService
         self::notifyParentsOfGroup($lecture->group_id, $message, route('parent.schedule'), 'error');
     }
 
-    /**
-     * تذكير بمحاضرة قادمة (لتشغيلها عبر Cron Job)
-     */
-    public static function remindUpcomingLectures($hoursBefore = 2)
+    public static function remindUpcomingLectures(int $hoursBefore = 2): void
     {
         $upcomingLectures = \App\Models\Lecture::with(['teacher.user', 'group'])
             ->where('date', today())
             ->whereBetween('start_time', [
-                now()->addHours($hoursBeefore)->format('H:i:s'),
-                now()->addHours($hoursBeeure + 1)->format('H:i:s'),
+                now()->addHours($hoursBefore)->format('H:i:s'),
+                now()->addHours($hoursBefore + 1)->format('H:i:s'),
             ])
             ->get();
 
@@ -243,21 +228,18 @@ class NotificationService
         }
     }
 
-    /**
-     * إرسال تقرير أسبوعي للأهالي
-     */
-    public static function sendWeeklyReportToParents()
+    public static function sendWeeklyReportToParents(): void
     {
         $parents = User::where('role', 'parent')->with('children')->get();
 
         foreach ($parents as $parent) {
             foreach ($parent->children as $child) {
-                $weeklyAttendance = $child->getWeeklyAttendancePercentage();
+                $attendancePct = $child->getAttendancePercentage();
 
                 $parent->notify(new AcademyNotification(
-                    "التقرير الأسبوعي للطالب {$child->user->name}: نسبة الحضور {$weeklyAttendance}%",
+                    "التقرير الأسبوعي للطالب {$child->user->name}: نسبة الحضور {$attendancePct}%",
                     route('parent.attendance'),
-                    $weeklyAttendance >= 80 ? 'success' : 'warning'
+                    $attendancePct >= 80 ? 'success' : 'warning'
                 ));
             }
         }

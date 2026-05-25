@@ -22,7 +22,6 @@ use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
 {
-    // ======================== الوظائف الموجودة (بدون تغيير) ========================
 
     public function dashboard()
     {
@@ -87,7 +86,7 @@ class AdminController extends Controller
         return view('admin.reports', compact('stats', 'attendanceStats', 'paymentStats'));
     }
 
-    // ======================== إدارة المجموعات المحسنة ========================
+
 
     /**
      * عرض صفحة إدارة المجموعات الجديدة
@@ -161,10 +160,16 @@ class AdminController extends Controller
     public function getGroupsData()
     {
         try {
-            $groups = Group::with(['students', 'teachers', 'subjects'])
+            // pre-load today's lecture counts per group in one query
+            $todayCountsByGroup = Lecture::where('date', today()->toDateString())
+                ->selectRaw('group_id, count(*) as cnt')
+                ->groupBy('group_id')
+                ->pluck('cnt', 'group_id');
+
+            $groups = Group::with(['teachers.user', 'subjects'])
                 ->withCount('students')
                 ->get()
-                ->map(function ($group) {
+                ->map(function ($group) use ($todayCountsByGroup) {
                     return [
                         'id'                   => $group->id,
                         'name'                 => $group->name,
@@ -179,25 +184,20 @@ class AdminController extends Controller
                         'can_add_students'     => $group->can_add_students,
                         'full_name'            => $group->full_name,
                         'created_at'           => $group->created_at->format('Y-m-d'),
-                        'teachers'             => $group->teachers->map(function ($teacher) {
-                            return [
-                                'id'    => $teacher->id,
-                                'name'  => $teacher->user->name ?? 'غير محدد',
-                                'email' => $teacher->user->email ?? '',
-                            ];
-                        }),
+                        'teachers'             => $group->teachers->map(fn($t) => [
+                            'id'    => $t->id,
+                            'name'  => $t->user?->name ?? 'غير محدد',
+                            'email' => $t->user?->email ?? '',
+                        ]),
                         'subjects_count'       => $group->subjects->count(),
-                        'today_lectures'       => $group->getTodayLectures()->count(),
+                        'today_lectures'       => $todayCountsByGroup->get($group->id, 0),
                     ];
                 });
 
-            // إحصائيات عامة
             $stats = [
                 'total_groups'     => $groups->count(),
                 'total_students'   => $groups->sum('students_count'),
-                'full_groups'      => $groups->where('students_count', '>=', function ($group) {
-                    return $group['max_capacity'];
-                })->count(),
+                'full_groups'      => $groups->filter(fn($g) => $g['students_count'] >= $g['max_capacity'])->count(),
                 'today_lectures'   => $groups->sum('today_lectures'),
                 'available_groups' => $groups->where('can_add_students', true)->count(),
             ];
@@ -415,7 +415,6 @@ class AdminController extends Controller
 
             $groupName = $group->name;
 
-            // ✅ حذف العلاقات المتبقية فقط
             $group->subjects()->detach();
             $group->groupSubjects()->delete();
 
@@ -517,7 +516,6 @@ class AdminController extends Controller
                 $query->where(function ($q) use ($group) {
                     // طلاب من نفس المرحلة من طلبات الانتساب
                     $q->whereHas('admission', function ($subQuery) use ($group) {
-                        // ✅ التصحيح: استخدام 'grade' بدلاً من 'grade_level'
                         $subQuery->where('grade', $group->grade_level)
                             ->where('status', 'approved');
                     })
@@ -533,11 +531,9 @@ class AdminController extends Controller
                     'email'          => $student->user->email ?? '',
                     'birth_date'     => $student->birth_date?->format('Y-m-d'),
                     'age'            => $student->age,
-                    // ✅ التصحيح: استخدام 'grade' من admission
                     'grade_level'    => $student->admission?->grade ?? 'مضاف مباشرة',
                     'source'         => $student->admission ? 'طلب انتساب' : 'إضافة مباشرة',
                     'admission_date' => $student->admission?->created_at?->format('Y-m-d'),
-                    // ✅ التصحيح في display_name أيضاً
                     'display_name'   => $student->user->name . ' (' . ($student->admission?->grade ?? 'مضاف مباشرة') . ')',
                 ];
             });
@@ -560,7 +556,6 @@ class AdminController extends Controller
 
     }
 
-    // ======================== وظائف إدارة الطلاب الجديدة ========================
 
     /**
      * جلب طلاب المجموعة
@@ -568,7 +563,6 @@ class AdminController extends Controller
     public function getGroupStudents(Group $group)
     {
         try {
-            // ✅ استخدام hasMany بدلاً من belongsToMany
             $students = $group->students()->with('user')->get()->map(function ($student) {
                 return [
                     'id'              => $student->id,
@@ -629,7 +623,6 @@ class AdminController extends Controller
                 ], 400);
             }
 
-            // ✅ التحقق من وجود الطالب في المجموعة الحالية
             if ($student->group_id !== $fromGroup->id) {
                 return response()->json([
                     'success' => false,
@@ -639,7 +632,6 @@ class AdminController extends Controller
 
             DB::beginTransaction();
 
-            // ✅ استخدام دالة transferStudentTo من النموذج
             $success = $fromGroup->transferStudentTo($student, $targetGroup);
 
             if (! $success) {
@@ -673,7 +665,6 @@ class AdminController extends Controller
     public function removeStudentFromGroup(Group $group, Student $student)
     {
         try {
-            // ✅ التحقق من وجود الطالب في المجموعة
             if ($student->group_id !== $group->id) {
                 return response()->json([
                     'success' => false,
@@ -683,7 +674,6 @@ class AdminController extends Controller
 
             DB::beginTransaction();
 
-            // ✅ استخدام دالة removeStudent من النموذج
             $group->removeStudent($student);
 
             DB::commit();
@@ -703,58 +693,9 @@ class AdminController extends Controller
 
     }
 
-    /**
-     * جلب مواد المجموعة للمحاضرات (فقط المواد النشطة المرتبطة بالمجموعة)
-     */
     public function getGroupSubjectsForLectures(Request $request)
     {
-        try {
-            $groupId = $request->get('group_id');
-
-            if (! $groupId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'معرف المجموعة مطلوب',
-                ]);
-            }
-
-            // جلب المواد المرتبطة بالمجموعة من جدول الربط
-            $subjects = DB::table('group_subjects')
-                ->join('subjects', 'group_subjects.subject_id', '=', 'subjects.id')
-                ->where('group_subjects.group_id', $groupId)
-                ->where('group_subjects.is_active', true)
-                ->select(
-                    'subjects.id',
-                    'subjects.name',
-                    'subjects.name as display_name',
-                    'subjects.description'
-                )
-                ->get();
-
-            // لوغ للتصحيح
-            Log::info('Group subjects loaded', [
-                'group_id'       => $groupId,
-                'subjects_count' => $subjects->count(),
-            ]);
-
-            return response()->json([
-                'success'  => true,
-                'subjects' => $subjects,
-                'message'  => "تم تحميل {$subjects->count()} مادة للمجموعة",
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error loading group subjects', [
-                'group_id' => $request->get('group_id'),
-                'error'    => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ: ' . $e->getMessage(),
-            ], 500);
-        }
-
+        return $this->getGroupSubjects($request);
     }
 
     /**
@@ -1140,7 +1081,6 @@ class AdminController extends Controller
 
     }
 
-    // ======================== بقية الوظائف الموجودة ========================
 
     public function approveAdmission(Request $request, Admission $admission)
     {
@@ -1181,7 +1121,7 @@ class AdminController extends Controller
 
     }
 
-    private function createNewSectionForGrade($gradeLevel)
+    private function createNewSectionForGrade(string $gradeLevel)
     {
         // منطق إنشاء شعبة جديدة
         $latestSection = Group::where('grade_level', $gradeLevel)
@@ -1253,17 +1193,17 @@ class AdminController extends Controller
         return back()->with('success', 'تم حفظ الإعدادات بنجاح');
     }
 
-    public function clearData(Request $request)
+    public function clearData()
     {
         try {
             DB::transaction(function () {
-                Attendance::truncate();
-                Lecture::truncate();
-                Payment::truncate();
-                Student::truncate();
-                Teacher::truncate();
-                Admission::truncate();
-                Group::truncate();
+                Attendance::query()->delete();
+                Lecture::query()->delete();
+                Payment::query()->delete();
+                Student::query()->delete();
+                Teacher::query()->delete();
+                Admission::query()->delete();
+                Group::query()->delete();
             });
 
             return response()->json([
@@ -1279,18 +1219,18 @@ class AdminController extends Controller
         }
     }
 
-    public function resetSystem(Request $request)
+    public function resetSystem()
     {
         try {
             DB::transaction(function () {
-                Attendance::truncate();
-                Lecture::truncate();
-                Payment::truncate();
-                Student::truncate();
-                Teacher::truncate();
-                Admission::truncate();
+                Attendance::query()->delete();
+                Lecture::query()->delete();
+                Payment::query()->delete();
+                Student::query()->delete();
+                Teacher::query()->delete();
+                Admission::query()->delete();
+                Group::query()->delete();
 
-                Group::truncate();
                 Group::create([
                     'name'        => 'المجموعة الأولى',
                     'description' => 'مجموعة افتراضية للطلاب الجدد',
@@ -1371,26 +1311,6 @@ class AdminController extends Controller
         return back()->with('success', 'تم تحديث حالة الدفع وإرسال إشعار لولي الأمر');
     }
 
-    // public function createLecture(Request $request)
-    // {
-    //     $request->validate([
-    //         'title'       => 'required|string|max:255',
-    //         'date'        => 'required|date|after_or_equal:today',
-    //         'start_time'  => 'required|date_format:H:i',
-    //         'end_time'    => 'required|date_format:H:i|after:start_time',
-    //         'teacher_id'  => 'required|exists:teachers,id',
-    //         'group_id'    => 'required|exists:groups,id',
-    //         'description' => 'nullable|string|max:1000',
-    //     ]);
-
-    //     $lecture = Lecture::create($request->all());
-
-    //     NotificationService::notifyNewLecture($lecture);
-
-    //     return back()->with('success', 'تم إضافة المحاضرة وإرسال إشعارات للطلاب وأولياء الأمور');
-    // }
-
-    // ========== إدارة المحاضرات والجدولة ==========
 
 /**
  * عرض صفحة المحاضرات الرئيسية
@@ -1421,9 +1341,8 @@ class AdminController extends Controller
         try {
             $start = $request->get('start');
             $end   = $request->get('end');
-            $view  = $request->get('view', 'month');
 
-            // ✅ التحقق من وجود محاضرات أولاً
+            // تحقق من وجود محاضرات أولاً
             $lecturesCount = Lecture::count();
             if ($lecturesCount === 0) {
                 return response()->json([]);
@@ -1435,8 +1354,7 @@ class AdminController extends Controller
                 $query->whereBetween('date', [$start, $end]);
             }
 
-            $lectures = $query->get()->map(function ($lecture) {
-                // ✅ معالجة آمنة للأوقات
+            $lectures = $query->get()->map(function (Lecture $lecture) {
                 $startTime = '09:00:00';
                 $endTime   = '10:30:00';
 
@@ -1457,17 +1375,19 @@ class AdminController extends Controller
                     'title'           => $lecture->title ?? 'محاضرة بدون عنوان',
                     'start'           => $lecture->date->format('Y-m-d') . 'T' . $startTime,
                     'end'             => $lecture->date->format('Y-m-d') . 'T' . $endTime,
-                    // ✅ إصلاح ألوان ثابتة بدلاً من دوال مفقودة
-                    'backgroundColor' => $this->getEventColor($lecture->type ?? 'lecture'),
-                    'borderColor'     => $this->getEventBorderColor($lecture->status ?? 'scheduled'),
+                    'backgroundColor' => $lecture->getTypeColor(),
+                    'borderColor'     => $lecture->getStatusColor(),
                     'extendedProps'   => [
                         'type'           => $lecture->type ?? 'lecture',
                         'status'         => $lecture->status ?? 'scheduled',
-                        'teacher_name'   => $lecture->teacher && $lecture->teacher->user ? $lecture->teacher->user->name : 'غير محدد',
-                        'group_name'     => $lecture->group ? $lecture->group->name : 'غير محدد',
-                        'subject_name'   => $lecture->subject ? $lecture->subject->name : '',
-                        'students_count' => $lecture->group ? $lecture->group->students_count : 0,
-                        'series_id'      => $lecture->series_id ?? null,
+                        'teacher_name'   => $lecture->teacher?->user?->name ?? 'غير محدد',
+                        'group_name'     => $lecture->group?->name ?? 'غير محدد',
+                        'subject_name'   => $lecture->subject?->name ?? '',
+                        'subject_id'     => $lecture->subject_id,
+                        'start_time'     => $startTime,
+                        'end_time'       => $endTime,
+                        'students_count' => $lecture->group?->students_count ?? 0,
+                        'series_id'      => $lecture->series_id,
                         'description'    => $lecture->description ?? '',
                     ],
                 ];
@@ -1481,23 +1401,17 @@ class AdminController extends Controller
                 'line'  => $e->getLine(),
             ]);
 
-            // ✅ إرجاع مصفوفة فارغة بدلاً من 500
             return response()->json([]);
         }
-
-        // return \App\Http\Resources\LectureResourceCalendar::fetchFiltered($request);
 
     }
 
     /**
      * API بيانات تقويم الـ Dashboard المحسن - النسخة النهائية
      */
-    public function getDashboardCalendarData(Request $request)
+    public function getDashboardCalendarData()
     {
         try {
-            $start = $request->get('start');
-            $end   = $request->get('end');
-
             $lecturesCount = Lecture::count();
             if ($lecturesCount === 0) {
                 return response()->json([
@@ -1518,7 +1432,7 @@ class AdminController extends Controller
             // إضافة العلاقات تدريجياً
             try {
                 $query->with(['subject', 'teacher.user', 'group']);
-            } catch (\Exception $e) {
+            } catch (\Exception) {
                 // تجاهل أخطاء العلاقات
             }
 
@@ -1568,7 +1482,7 @@ class AdminController extends Controller
 /**
  * تنسيق وقت المحاضرة
  */
-    private function formatLectureTime($time)
+    private function formatLectureTime(mixed $time): string
     {
         if (! $time) {
             return '09:00';
@@ -1579,7 +1493,7 @@ class AdminController extends Controller
             try {
                 $carbonTime = \Carbon\Carbon::parse($time);
                 return $carbonTime->format('H:i');
-            } catch (\Exception $e) {
+            } catch (\Exception) {
                 return '09:00';
             }
         }
@@ -1597,55 +1511,7 @@ class AdminController extends Controller
 
     }
 
-/**
- * تحديد أولوية المحاضرة للـ Dashboard
- */
-    private function getDashboardLecturePriority($lecture)
-    {
-        $now             = now();
-        $lectureDateTime = \Carbon\Carbon::parse($lecture->date . ' ' . $lecture->start_time);
 
-        // محاضرة في نفس اليوم
-        if ($lectureDateTime->isToday()) {
-            return 'high';
-        }
-
-        // محاضرة غداً
-        if ($lectureDateTime->isTomorrow()) {
-            return 'medium';
-        }
-
-        // محاضرة خلال الأسبوع
-        if ($lectureDateTime->diffInDays($now) <= 7) {
-            return 'normal';
-        }
-
-        return 'low';
-    }
-
-/**
- * الحصول على لون المادة للـ Dashboard
- */
-    private function getDashboardSubjectColor($subject)
-    {
-        $colors = [
-            'رياضيات' => '#3b82f6',
-            'فيزياء'  => '#ef4444',
-            'كيمياء'  => '#10b981',
-            'عربي'    => '#f59e0b',
-            'إنجليزي' => '#8b5cf6',
-            'تاريخ'   => '#06b6d4',
-            'جغرافيا' => '#84cc16',
-            'أحياء'   => '#f97316',
-            'علوم'    => '#ec4899',
-            'حاسوب'   => '#f97316',
-            'إسلامية' => '#10b981',
-            'فرنسي'   => '#ec4899',
-            'default' => '#6366f1',
-        ];
-
-        return $colors[$subject] ?? $colors['default'];
-    }
 
 /**
  * إحصائيات سريعة للـ Dashboard (دالة إضافية اختيارية)
@@ -1705,26 +1571,6 @@ class AdminController extends Controller
         }
     }
 
-    private function getEventColor($type)
-    {
-        return match ($type) {
-            'final_exam' => '#DC3545',
-            'exam'       => '#EE8100',
-            'review'     => '#28A745',
-            'activity'   => '#FFC107',
-            default      => '#2778E5'
-        };
-    }
-
-    private function getEventBorderColor($status)
-    {
-        return match ($status) {
-            'cancelled'   => '#6C757D',
-            'rescheduled' => '#6F42C1',
-            'completed'   => '#198754',
-            default       => '#2778E5'
-        };
-    }
 
 /**
  * جلب بيانات المحاضرات للجدول
@@ -1733,46 +1579,38 @@ class AdminController extends Controller
     {
         try {
             $lectures = Lecture::with(['teacher.user', 'group', 'subject'])
-                ->when($request->get('date_from'), function ($query) use ($request) {
-                    return $query->whereDate('date', '>=', $request->get('date_from'));
-                })
-                ->when($request->get('date_to'), function ($query) use ($request) {
-                    return $query->whereDate('date', '<=', $request->get('date_to'));
-                })
-                ->when($request->get('group_id'), function ($query) use ($request) {
-                    return $query->where('group_id', $request->get('group_id'));
-                })
-                ->when($request->get('teacher_id'), function ($query) use ($request) {
-                    return $query->where('teacher_id', $request->get('teacher_id'));
-                })
+                ->withCount(['attendance as attendance_count' => fn($q) => $q->where('status', 'present')])
+                ->when($request->get('date_from'), fn($q) => $q->whereDate('date', '>=', $request->get('date_from')))
+                ->when($request->get('date_to'),   fn($q) => $q->whereDate('date', '<=', $request->get('date_to')))
+                ->when($request->get('group_id'),   fn($q) => $q->where('group_id', $request->get('group_id')))
+                ->when($request->get('teacher_id'), fn($q) => $q->where('teacher_id', $request->get('teacher_id')))
+                ->when(! $request->get('date_from') && ! $request->get('date_to'),
+                    fn($q) => $q->where('date', '>=', now()->subMonths(2))
+                )
                 ->orderBy('date', 'desc')
                 ->orderBy('start_time', 'asc')
+                ->limit(500)
                 ->get()
                 ->map(function ($lecture) {
                     return [
                         'id'               => $lecture->id,
                         'title'            => $lecture->title,
                         'date'             => $lecture->date->format('Y-m-d'),
-                        // ✅ إصلاح معالجة الوقت
-                        'start_time'       => $lecture->start_time ?
-                        (is_string($lecture->start_time) ?
-                            $lecture->start_time :
-                            $lecture->start_time->format('H:i')) : '00:00',
-                        'end_time'         => $lecture->end_time ?
-                        (is_string($lecture->end_time) ?
-                            $lecture->end_time :
-                            $lecture->end_time->format('H:i')) : '23:59',
-                        // ✅ إصلاح معالجة العلاقات
-                        'teacher_name'     => $lecture->teacher && $lecture->teacher->user ?
-                        $lecture->teacher->user->name : 'غير محدد',
-                        'group_name'       => $lecture->group ? $lecture->group->name : 'غير محدد',
-                        'subject_name'     => $lecture->subject ? $lecture->subject->name : '',
-                        'students_count'   => $lecture->group ? $lecture->group->students_count : 0,
+                        'start_time'       => $lecture->start_time
+                            ? (\is_string($lecture->start_time) ? $lecture->start_time : $lecture->start_time->format('H:i'))
+                            : '00:00',
+                        'end_time'         => $lecture->end_time
+                            ? (\is_string($lecture->end_time) ? $lecture->end_time : $lecture->end_time->format('H:i'))
+                            : '23:59',
+                        'teacher_name'     => $lecture->teacher?->user?->name ?? 'غير محدد',
+                        'group_name'       => $lecture->group?->name ?? 'غير محدد',
+                        'subject_name'     => $lecture->subject?->name ?? '',
+                        'students_count'   => $lecture->group?->students_count ?? 0,
                         'status'           => $lecture->status ?? 'scheduled',
                         'type'             => $lecture->type ?? 'lecture',
-                        'series_id'        => $lecture->series_id ?? null,
+                        'series_id'        => $lecture->series_id,
                         'description'      => $lecture->description,
-                        'attendance_count' => $lecture->attendance()->where('status', 'present')->count(),
+                        'attendance_count' => $lecture->attendance_count,
                     ];
                 });
 
@@ -1782,7 +1620,6 @@ class AdminController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // ✅ إضافة لوغ للتصحيح
             Log::error('Error in getLecturesData', [
                 'error' => $e->getMessage(),
                 'line'  => $e->getLine(),
@@ -1987,7 +1824,6 @@ class AdminController extends Controller
         try {
             DB::beginTransaction();
 
-            // ✅ التعديل هنا: تحديد المدة لـ 4 أشهر بدلاً من سنة
             $startDate = Carbon::parse($request->start_date);
             $endDate   = $request->end_date ? Carbon::parse($request->end_date) : $startDate->copy()->addMonths(4); // 4 أشهر بدلاً من 52 أسبوع
 
@@ -1995,7 +1831,7 @@ class AdminController extends Controller
             $series = LectureSeries::create([
                 'title'      => $request->title,
                 'start_date' => $startDate,
-                'end_date'   => $endDate, // ✅ الآن محدود بـ 4 أشهر
+                'end_date'   => $endDate,
                 'start_time' => $request->start_time,
                 'end_time'   => $request->end_time,
                 'teacher_id' => $request->teacher_id,
@@ -2225,12 +2061,11 @@ class AdminController extends Controller
         }
     }
 
-// ========== وظائف مساعدة ==========
 
 /**
  * التحقق من تضارب الأوقات
  */
-    private function checkTimeConflicts($teacherId, $date, $startTime, $endTime, $excludeLectureId = null)
+    private function checkTimeConflicts(int $teacherId, string $date, string $startTime, string $endTime, ?int $excludeLectureId = null)
     {
         return Lecture::where('teacher_id', $teacherId)
             ->whereDate('date', $date)
@@ -2248,41 +2083,6 @@ class AdminController extends Controller
             });
     }
 
-/**
- * تحديد لون المحاضرة حسب النوع
- */
-    private function getLectureColor($lecture)
-    {
-        switch ($lecture->type) {
-            case 'final_exam':
-                return '#DC3545'; // أحمر للامتحانات النهائية
-            case 'exam':
-                return '#EE8100'; // برتقالي للامتحانات
-            case 'review':
-                return '#28A745'; // أخضر للمراجعة
-            case 'activity':
-                return '#FFC107'; // أصفر للأنشطة
-            default:
-                return '#2778E5'; // أزرق للمحاضرات العادية
-        }
-    }
-
-/**
- * تحديد لون حدود المحاضرة حسب الحالة
- */
-    private function getLectureBorderColor($lecture)
-    {
-        switch ($lecture->status) {
-            case 'cancelled':
-                return '#6C757D'; // رمادي للملغاة
-            case 'rescheduled':
-                return '#6F42C1'; // بنفسجي للمؤجلة
-            case 'completed':
-                return '#198754'; // أخضر داكن للمكتملة
-            default:
-                return $this->getLectureColor($lecture);
-        }
-    }
 
 /**
  * عدد السلاسل النشطة
@@ -2372,25 +2172,6 @@ class AdminController extends Controller
                         ];
                     });
 
-                // طريقة 2: جلب المدرسين بناء على المواد المرتبطة بالمجموعة (إذا كنت تريد تخصيص أكثر)
-                /*
-            $teachers = DB::table('teachers')
-                ->join('users', 'teachers.user_id', '=', 'users.id')
-                ->join('group_subjects', function($join) use ($groupId) {
-                    $join->on('teachers.specialization_subject_id', '=', 'group_subjects.subject_id')
-                         ->where('group_subjects.group_id', '=', $groupId);
-                })
-                ->where('users.is_active', true)
-                ->select(
-                    'teachers.id',
-                    'users.name',
-                    'users.email',
-                    'teachers.specialization',
-                    DB::raw('CONCAT(users.name, CASE WHEN teachers.specialization IS NOT NULL THEN CONCAT(" (", teachers.specialization, ")") ELSE "" END) as display_name')
-                )
-                ->distinct()
-                ->get();
-            */
             }
 
             // لوغ للتصحيح
@@ -2425,75 +2206,218 @@ class AdminController extends Controller
     public function getActiveSeries()
     {
         try {
-            // ✅ استخدام whereNotNull بدلاً من scope قد لا يكون موجود
-            $series = Lecture::whereNotNull('series_id')
-                ->where(function ($query) {
-                    // السلاسل النشطة = لها محاضرات قادمة أو غير مكتملة
-                    $query->where('date', '>=', today())
-                        ->orWhere('status', '!=', 'completed');
-                })
-                ->with(['teacher.user', 'group', 'subject'])
-                ->select('series_id', 'title', 'teacher_id', 'group_id', 'subject_id', 'date')
-                ->distinct('series_id')
-                ->get()
-                ->map(function ($lecture) {
-                    $seriesLectures = Lecture::where('series_id', $lecture->series_id)->get();
+            $ft = fn($t) => $t instanceof Carbon ? $t->format('H:i') : substr((string) $t, 0, 5);
 
-                    // ✅ معالجة آمنة للتواريخ
-                    $dates      = $seriesLectures->pluck('date')->filter();
-                    $weeksCount = 0;
-                    if ($dates->count() > 1) {
-                        $maxDate = $dates->max();
-                        $minDate = $dates->min();
-                        if ($maxDate && $minDate) {
-                            $weeksCount = \Carbon\Carbon::parse($maxDate)->diffInWeeks(\Carbon\Carbon::parse($minDate));
-                        }
-                    }
+            $seriesList = LectureSeries::where('status', 'active')
+                ->whereHas('lectures', fn($q) => $q->where('date', '>=', today()))
+                ->with(['teacher.user', 'group', 'subject', 'days'])
+                ->withCount([
+                    'lectures as total_lectures',
+                    'lectures as completed_lectures' => fn($q) => $q->where('status', 'completed'),
+                    'lectures as remaining_lectures' => fn($q) => $q->where('date', '>=', today()),
+                ])
+                ->get()
+                ->map(function ($s) use ($ft) {
+                    $weeksCount = $s->start_date && $s->end_date
+                        ? $s->start_date->diffInWeeks($s->end_date)
+                        : 0;
 
                     return [
-                        'series_id'          => $lecture->series_id,
-                        'title'              => $lecture->title ?? 'سلسلة بدون عنوان',
-                        // ✅ معالجة آمنة للعلاقات
-                        'teacher_name'       => $lecture->teacher && $lecture->teacher->user
-                            ? $lecture->teacher->user->name
-                            : 'غير محدد',
-                        'group_name'         => $lecture->group ? $lecture->group->name : 'غير محدد',
-                        'subject_name'       => $lecture->subject ? $lecture->subject->name : '',
-                        'total_lectures'     => $seriesLectures->count(),
-                        'completed_lectures' => $seriesLectures->where('status', 'completed')->count(),
-                        'remaining_lectures' => $seriesLectures->where('date', '>', today())->count(),
+                        'series_id'          => $s->id,
+                        'title'              => $s->title,
+                        'teacher_id'         => $s->teacher_id,
+                        'teacher_name'       => $s->teacher?->user?->name ?? 'غير محدد',
+                        'group_id'           => $s->group_id,
+                        'group_name'         => $s->group?->name ?? 'غير محدد',
+                        'subject_id'         => $s->subject_id,
+                        'subject_name'       => $s->subject?->name ?? '',
+                        'start_time'         => $ft($s->start_time),
+                        'end_time'           => $ft($s->end_time),
+                        'start_date'         => $s->start_date->format('Y-m-d'),
+                        'end_date'           => $s->end_date?->format('Y-m-d'),
+                        'description'        => $s->description ?? '',
+                        'days'               => $s->days->pluck('day_of_week')->toArray(),
+                        'total_lectures'     => $s->total_lectures,
+                        'completed_lectures' => $s->completed_lectures,
+                        'remaining_lectures' => $s->remaining_lectures,
                         'weeks_count'        => $weeksCount,
                     ];
                 });
 
-            return response()->json([
-                'success' => true,
-                'series'  => $series,
-                'count'   => $series->count(), // ✅ إضافة عدد للتصحيح
-            ]);
+            return response()->json(['success' => true, 'series' => $seriesList]);
 
         } catch (\Exception $e) {
-            // ✅ إضافة تفاصيل أكثر للتصحيح
-            Log::error('Error in getActiveSeries', [
-                'error' => $e->getMessage(),
-                'line'  => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
+            Log::error('Error in getActiveSeries', ['error' => $e->getMessage(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ في جلب السلاسل النشطة: ' . $e->getMessage(),
-                'series'  => [], // ✅ إرجاع مصفوفة فارغة
+                'series'  => [],
             ], 500);
         }
     }
 
-    // ======================== وظائف مساعدة ========================
+    public function getSeriesDetails($id)
+    {
+        try {
+            $ft = fn($t) => $t instanceof Carbon ? $t->format('H:i') : substr((string) $t, 0, 5);
+
+            $s = LectureSeries::with(['teacher.user', 'group', 'subject', 'days'])
+                ->findOrFail($id);
+
+            $futureLectures = Lecture::where('series_id', $id)
+                ->where('date', '>=', today())
+                ->where('status', 'scheduled')
+                ->count();
+
+            return response()->json([
+                'success' => true,
+                'series'  => [
+                    'id'                   => $s->id,
+                    'title'                => $s->title,
+                    'start_time'           => $ft($s->start_time),
+                    'end_time'             => $ft($s->end_time),
+                    'start_date'           => $s->start_date->format('Y-m-d'),
+                    'end_date'             => $s->end_date?->format('Y-m-d'),
+                    'teacher_id'           => $s->teacher_id,
+                    'teacher_name'         => $s->teacher?->user?->name ?? '',
+                    'group_id'             => $s->group_id,
+                    'group_name'           => $s->group?->name ?? '',
+                    'subject_id'           => $s->subject_id,
+                    'subject_name'         => $s->subject?->name ?? '',
+                    'description'          => $s->description ?? '',
+                    'days'                 => $s->days->pluck('day_of_week')->toArray(),
+                    'future_lectures_count' => $futureLectures,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'لم يتم العثور على السلسلة'], 404);
+        }
+    }
+
+    public function updateSeries(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'title'       => 'required|string|max:255',
+            'start_time'  => 'required|date_format:H:i',
+            'end_time'    => 'required|date_format:H:i|after:start_time',
+            'end_date'    => 'nullable|date',
+            'teacher_id'  => 'required|exists:teachers,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'description' => 'nullable|string|max:1000',
+            'days'        => 'required|array|min:1',
+            'days.*'      => 'in:0,1,2,3,4,5,6',
+            'regenerate'  => 'boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات غير صحيحة',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $series   = LectureSeries::with('days')->findOrFail($id);
+            $oldDays  = $series->days->pluck('day_of_week')->sort()->values()->toArray();
+            $newDays  = collect($request->days)->map(fn($d) => (string) $d)->sort()->values()->toArray();
+            $daysChanged = $oldDays !== $newDays;
+
+            $updateData = [
+                'title'       => $request->title,
+                'start_time'  => $request->start_time,
+                'end_time'    => $request->end_time,
+                'teacher_id'  => $request->teacher_id,
+                'subject_id'  => $request->subject_id,
+                'description' => $request->description,
+            ];
+            if ($request->filled('end_date')) {
+                $updateData['end_date'] = $request->end_date;
+            }
+            $series->update($updateData);
+
+            if ($daysChanged) {
+                $series->days()->delete();
+                foreach ($request->days as $day) {
+                    $series->days()->create(['day_of_week' => (string) $day]);
+                }
+            }
+
+            if ($daysChanged && $request->boolean('regenerate', false)) {
+                Lecture::where('series_id', $id)
+                    ->where('date', '>=', today())
+                    ->where('status', 'scheduled')
+                    ->delete();
+
+                $series->refresh();
+                if (! $series->end_date || $series->end_date->lt(today())) {
+                    $series->update(['end_date' => today()->addMonths(4)]);
+                    $series->refresh();
+                }
+                app(SeriesGenerator::class)->generateFromDate($series, today());
+                $newCount = Lecture::where('series_id', $id)->where('date', '>=', today())->count();
+                $message  = "تم تحديث السلسلة وإعادة توليد {$newCount} محاضرة مستقبلية";
+            } else {
+                $updatedCount = Lecture::where('series_id', $id)
+                    ->where('date', '>=', today())
+                    ->where('status', 'scheduled')
+                    ->update([
+                        'title'      => $request->title,
+                        'start_time' => $request->start_time,
+                        'end_time'   => $request->end_time,
+                        'teacher_id' => $request->teacher_id,
+                        'subject_id' => $request->subject_id,
+                    ]);
+                $message = "تم تحديث السلسلة و{$updatedCount} محاضرة مستقبلية";
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => $message]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating series', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء التحديث: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function endLectureSeries($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $series = LectureSeries::findOrFail($id);
+            $series->update(['status' => 'completed']);
+
+            $cancelledCount = Lecture::where('series_id', $id)
+                ->where('date', '>=', today())
+                ->where('status', 'scheduled')
+                ->update([
+                    'status'               => 'cancelled',
+                    'cancellation_reason'  => 'إنهاء السلسلة',
+                ]);
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => "تم إنهاء السلسلة وإلغاء {$cancelledCount} محاضرة مستقبلية",
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error ending series', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'حدث خطأ: ' . $e->getMessage()], 500);
+        }
+    }
+
+
 
     /**
      * تحديد حرف الشعبة
      */
-    private function getSectionLetter($sectionNumber)
+    private function getSectionLetter(int $sectionNumber): string
     {
         $letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'];
         return $letters[($sectionNumber - 1) % count($letters)];

@@ -6,12 +6,9 @@ use Illuminate\Validation\Rule;
 
 class StoreAdmissionRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true; // أو حسب نظام الصلاحيات لديك
+        return $this->user()?->isAdmin() ?? false;
     }
 
     /**
@@ -26,7 +23,7 @@ class StoreAdmissionRequest extends FormRequest
             'application_date'   => 'required|date',
             'application_number' => 'nullable|string|size:4',
             'student_name'       => 'required|string|max:255',
-            'student_id'         => 'required|string|size:9',
+            'student_id'         => ['required', 'string', 'size:9', Rule::unique('admissions', 'student_id')],
             'birth_date'         => 'required|date',
             'grade'              => 'required|string',
             'academic_level'     => 'required|string',
@@ -124,7 +121,7 @@ class StoreAdmissionRequest extends FormRequest
                 $nameParts = explode(' ', trim($studentName));
                 $nameParts = array_filter($nameParts); // إزالة المسافات الفارغة
 
-                if (count($nameParts) < 4) {
+                if (\count($nameParts) < 4) {
                     $validator->errors()->add('student_name', 'يرجى إدخال الاسم الرباعي كاملاً (4 أسماء على الأقل)');
                 }
             }
@@ -135,7 +132,7 @@ class StoreAdmissionRequest extends FormRequest
                 $nameParts = explode(' ', trim($parentName));
                 $nameParts = array_filter($nameParts); // إزالة المسافات الفارغة
 
-                if (count($nameParts) < 3) {
+                if (\count($nameParts) < 3) {
                     $validator->errors()->add('parent_name', 'يرجى إدخال الاسم الثلاثي كاملاً (3 أسماء على الأقل)');
                 }
             }

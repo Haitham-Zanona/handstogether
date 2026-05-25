@@ -1,6 +1,7 @@
 <?php
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +19,6 @@ class Admission extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        // بيانات الطلب الأساسية (من الموديل الأصلي)
         'day',
         'application_date',
         'application_number',
@@ -39,7 +39,12 @@ class Admission extends Model
         'payment_due_from',
         'payment_due_to',
         'status',
-
+        'group_id',
+        'rejection_reason',
+        'approved_at',
+        'approved_by',
+        'parent_user_id',
+        'student_user_id',
     ];
 
     /**
@@ -67,69 +72,41 @@ class Admission extends Model
         'parent_id',
     ];
 
-    // ================== العلاقات ==================
-
-    /**
-     * علاقة مع المجموعة
-     */
     public function group()
     {
         return $this->belongsTo(Group::class);
     }
 
-    /**
-     * علاقة مع المستخدم الأب (إذا تم قبول الطلب)
-     */
     public function parentUser()
     {
         return $this->belongsTo(User::class, 'parent_user_id');
     }
 
-    /**
-     * علاقة مع المستخدم الطالب (إذا تم قبول الطلب)
-     */
     public function studentUser()
     {
         return $this->belongsTo(User::class, 'student_user_id');
     }
 
-    /**
-     * علاقة مع سجل الطالب (إذا تم إنشاؤه)
-     */
     public function student()
     {
         return $this->hasOne(Student::class);
     }
 
-    // ================== Scopes ==================
-
-    /**
-     * طلبات في الانتظار
-     */
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
     }
 
-    /**
-     * طلبات مقبولة
-     */
     public function scopeApproved($query)
     {
         return $query->where('status', 'approved');
     }
 
-    /**
-     * طلبات مرفوضة
-     */
     public function scopeRejected($query)
     {
         return $query->where('status', 'rejected');
     }
 
-    /**
-     * البحث في الطلبات
-     */
     public function scopeSearch($query, $search)
     {
         return $query->where(function ($q) use ($search) {
@@ -141,22 +118,14 @@ class Admission extends Model
         });
     }
 
-    /**
-     * فلترة حسب الحالة
-     */
     public function scopeWithStatus($query, $status)
     {
-        // return $query->where('status', $status);
-
         if ($status) {
             return $query->where('status', $status);
         }
         return $query;
     }
 
-    /**
-     * فلترة حسب المرحلة الدراسية
-     */
     public function scopeWithGrade($query, $grade)
     {
         if ($grade) {
@@ -165,11 +134,6 @@ class Admission extends Model
         return $query;
     }
 
-    // ================== Attributes & Accessors ==================
-
-    /**
-     * حالة الطلب باللغة العربية
-     */
     protected function statusInArabic(): Attribute
     {
         return Attribute::make(
@@ -182,23 +146,6 @@ class Admission extends Model
         );
     }
 
-    /**
-     * للتوافق مع الموديل الأصلي
-     */
-    public function getStatusInArabicAttribute()
-    {
-        // return $this->statusInArabic;
-        return match ($this->status) {
-            'pending' => 'في الانتظار',
-            'approved' => 'مقبول',
-            'rejected' => 'مرفوض',
-            default => 'غير محدد'
-        };
-    }
-
-    /**
-     * عمر الطالب
-     */
     protected function studentAge(): Attribute
     {
         return Attribute::make(
@@ -209,9 +156,6 @@ class Admission extends Model
         );
     }
 
-    /**
-     * رقم الهاتف المرجعي (للتوافق مع الموديل الأصلي)
-     */
     protected function phone(): Attribute
     {
         return Attribute::make(
@@ -223,9 +167,6 @@ class Admission extends Model
         );
     }
 
-    /**
-     * الاسم الكامل للطالب مع التنسيق
-     */
     protected function formattedStudentName(): Attribute
     {
         return Attribute::make(
@@ -233,9 +174,6 @@ class Admission extends Model
         );
     }
 
-    /**
-     * الاسم الكامل لولي الأمر مع التنسيق
-     */
     protected function formattedParentName(): Attribute
     {
         return Attribute::make(
@@ -243,11 +181,6 @@ class Admission extends Model
         );
     }
 
-    // ================== Methods ==================
-
-    /**
-     * توليد رقم طلب تلقائي
-     */
     public static function generateApplicationNumber(): string
     {
         $prefix     = 'ADM';
@@ -261,64 +194,52 @@ class Admission extends Model
         return $prefix . $year . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
     }
 
-    /**
-     * تحويل الطلب إلى طالب ومستخدم (من الموديل الأصلي مع تحسينات)
-     */
-    public function convertToStudent($groupId = null)
+    public function convertToStudent(?int $groupId = null, ?int $approvedBy = null): Student
     {
         if ($this->status !== 'pending') {
             throw new \Exception('يمكن قبول الطلبات في الانتظار فقط');
         }
 
-        DB::transaction(function () use ($groupId) {
-            // إنشاء مستخدم ولي الأمر
+        return DB::transaction(function () use ($groupId, $approvedBy) {
             $parentEmail = $this->generateUniqueEmail($this->parent_name, 'parent');
             $parent      = User::create([
                 'name'        => $this->formatted_parent_name,
                 'email'       => $parentEmail,
-                'password'    => Hash::make('123456'), // كلمة مرور افتراضية
+                'password'    => Hash::make('123456'),
                 'role'        => 'parent',
                 'phone'       => $this->father_phone ?: $this->phone,
                 'national_id' => $this->parent_id,
             ]);
 
-            // إنشاء مستخدم الطالب
             $studentEmail = $this->generateUniqueEmail($this->student_name, 'student');
             $studentUser  = User::create([
                 'name'        => $this->formatted_student_name,
                 'email'       => $studentEmail,
-                'password'    => Hash::make('123456'), // كلمة مرور افتراضية
+                'password'    => Hash::make('123456'),
                 'role'        => 'student',
                 'national_id' => $this->student_id,
                 'birth_date'  => $this->birth_date,
-                'parent_id'   => $parent->id,
             ]);
+            // parent_id is not in $fillable to prevent mass-assignment via forms
+            $studentUser->forceFill(['parent_id' => $parent->id])->save();
 
-            // إنشاء سجل الطالب
             $student = Student::create([
-                'admission_id'    => $this->id,
-                'user_id'         => $studentUser->id,
-                'parent_id'       => $parent->id,
-                'group_id'        => $groupId,
-                'name'            => $this->formatted_student_name,
-                'student_id'      => $this->student_id,
-                'birth_date'      => $this->birth_date,
-                'grade'           => $this->grade,
-                'academic_level'  => $this->academic_level,
-                'monthly_fee'     => $this->monthly_fee,
-                'enrollment_date' => $this->study_start_date ?: now(),
-                'status'          => 'active',
+                'admission_id' => $this->id,
+                'user_id'      => $studentUser->id,
+                'parent_id'    => $parent->id,
+                'group_id'     => $groupId,
+                'birth_date'   => $this->birth_date,
             ]);
 
-            // تحديث عدد الطلاب في المجموعة إذا تم تحديدها
             if ($groupId) {
                 Group::where('id', $groupId)->increment('students_count');
             }
 
-            // تحديث حالة الطلب وربط المستخدمين
             $this->update([
                 'status'          => 'approved',
                 'group_id'        => $groupId,
+                'approved_at'     => now(),
+                'approved_by'     => $approvedBy,
                 'parent_user_id'  => $parent->id,
                 'student_user_id' => $studentUser->id,
             ]);
@@ -327,29 +248,23 @@ class Admission extends Model
         });
     }
 
-    /**
-     * توليد ايميل فريد للمستخدم
-     */
     private function generateUniqueEmail(string $name, string $type): string
     {
         $baseName  = Str::slug($name, '');
-        $baseEmail = strtolower($baseName) . '@academy.local';
+        $baseEmail = strtolower($baseName) . '.' . $type . '@academy.local';
 
         $counter = 1;
         $email   = $baseEmail;
 
         while (User::where('email', $email)->exists()) {
-            $email = strtolower($baseName) . $counter . '@academy.local';
+            $email = strtolower($baseName) . '.' . $type . $counter . '@academy.local';
             $counter++;
         }
 
         return $email;
     }
 
-    /**
-     * رفض الطلب مع سبب
-     */
-    public function reject(string $reason = null): bool
+    public function reject(?string $reason = null): bool
     {
         if ($this->status !== 'pending') {
             throw new \Exception('يمكن رفض الطلبات في الانتظار فقط');
@@ -362,9 +277,6 @@ class Admission extends Model
         ]);
     }
 
-    /**
-     * إعادة تعيين حالة الطلب
-     */
     public function resetStatus(): bool
     {
         DB::transaction(function () {
@@ -401,28 +313,26 @@ class Admission extends Model
         return true;
     }
 
-    /**
-     * التحقق من انتهاء صلاحية الطلب
-     */
     public function isExpired(): bool
     {
         return $this->status === 'pending' &&
         $this->created_at->addDays(30)->isPast();
     }
 
-    /**
-     * حساب المبلغ المستحق
-     */
     public function getDueAmount(): float
     {
         if (! $this->study_start_date || ! $this->payment_due_from || ! $this->payment_due_to) {
             return 0;
         }
 
-        $startDate = max($this->study_start_date, $this->payment_due_from);
-        $endDate   = min(now(), $this->payment_due_to);
+        $studyStart = Carbon::parse($this->study_start_date);
+        $dueFrom    = Carbon::parse($this->payment_due_from);
+        $dueTo      = Carbon::parse($this->payment_due_to);
 
-        if ($startDate > $endDate) {
+        $startDate = $studyStart->gt($dueFrom) ? $studyStart : $dueFrom;
+        $endDate   = now()->lt($dueTo) ? now() : $dueTo;
+
+        if ($startDate->gt($endDate)) {
             return 0;
         }
 
@@ -430,9 +340,6 @@ class Admission extends Model
         return (float) $this->monthly_fee * $months;
     }
 
-    /**
-     * التحقق من صحة البيانات المطلوبة للقبول
-     */
     public function canBeApproved(): bool
     {
         return $this->status === 'pending' &&
@@ -442,9 +349,6 @@ class Admission extends Model
         strlen($this->student_id) === 9;
     }
 
-    /**
-     * الحصول على تفاصيل الطلب للعرض
-     */
     public function getDisplayData(): array
     {
         return [
@@ -467,11 +371,6 @@ class Admission extends Model
 
     }
 
-    // ================== Boot Method ==================
-
-    /**
-     * Boot method لتوليد رقم الطلب تلقائياً
-     */
     protected static function boot()
     {
         parent::boot();

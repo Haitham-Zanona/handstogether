@@ -19,10 +19,10 @@ class Teacher extends Model
 
     public function groups()
     {
-        return $this->hasManyThrough(Group::class, Lecture::class);
+        return $this->hasManyThrough(Group::class, Lecture::class)->distinct();
     }
 
-    // Get students taught by this teacher
+    // Returns a Builder (not a relation) — cannot be eager-loaded
     public function students()
     {
         return Student::whereHas('group.lectures', function ($query) {

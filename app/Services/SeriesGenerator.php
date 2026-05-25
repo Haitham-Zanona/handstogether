@@ -12,16 +12,22 @@ class SeriesGenerator
      */
     public function generateLectures(LectureSeries $series): void
     {
-        $days  = $series->days->pluck('day_of_week')->toArray();
-        $start = Carbon::parse($series->start_date);
-        $end   = Carbon::parse($series->end_date);
+        $this->generateFromDate($series, Carbon::parse($series->start_date));
+    }
 
-        $current = $start->copy();
+    /**
+     * إعادة توليد المحاضرات من تاريخ محدد حتى نهاية السلسلة
+     */
+    public function generateFromDate(LectureSeries $series, Carbon $fromDate): void
+    {
+        $days    = $series->days->pluck('day_of_week')->toArray();
+        $end     = $series->end_date
+            ? Carbon::parse($series->end_date)
+            : $fromDate->copy()->addMonths(4);
+        $current = $fromDate->copy();
 
         while ($current->lte($end)) {
-            $dayName = strtolower($current->format('l')); // sunday, monday, ...
-
-            if (in_array($dayName, $days)) {
+            if (in_array((string) $current->dayOfWeek, $days)) {
                 Lecture::create([
                     'title'      => $series->title,
                     'date'       => $current->toDateString(),
@@ -35,7 +41,6 @@ class SeriesGenerator
                     'type'       => 'lecture',
                 ]);
             }
-
             $current->addDay();
         }
     }

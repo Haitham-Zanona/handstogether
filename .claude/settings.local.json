@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(php -l app/Models/Admission.php)",
+      "Bash(php -l app/Services/NotificationService.php)",
+      "Bash(php -l app/Services/AdmissionService.php)",
+      "Bash(php -l app/Models/Payment.php)",
+      "Bash(php -l app/Models/Teacher.php)",
+      "Bash(php -r \"require 'vendor/autoload.php'; echo 'autoload ok';\")"
+    ]
+  }
+}

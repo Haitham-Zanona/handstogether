@@ -34,10 +34,7 @@ class AdmissionController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return response()->json([
-                'error'   => 'خطأ في جلب المجموعات',
-                'message' => $e->getMessage(),
-            ], 500);
+            return response()->json(['error' => 'حدث خطأ في جلب المجموعات'], 500);
         }
     }
 
@@ -81,20 +78,13 @@ class AdmissionController extends Controller
                 return response()->json([
                     'success'    => true,
                     'data'       => $admissions->items(),
-                    'admissions' => [
-                        'data'         => $admissions->items(),
+                    'pagination' => [
                         'current_page' => $admissions->currentPage(),
                         'last_page'    => $admissions->lastPage(),
                         'total'        => $admissions->total(),
                         'per_page'     => $admissions->perPage(),
                         'from'         => $admissions->firstItem(),
                         'to'           => $admissions->lastItem(),
-                    ],
-                    'pagination' => [
-                        'current_page' => $admissions->currentPage(),
-                        'last_page'    => $admissions->lastPage(),
-                        'total'        => $admissions->total(),
-                        'count'        => $admissions->count(),
                     ],
                 ]);
             }
@@ -314,30 +304,18 @@ class AdmissionController extends Controller
      */
     public function approve(Request $request, Admission $admission)
     {
-        // أضف هذا للتشخيص
-        Log::info('طلب الموافقة تم استلامه', [
-            'admission_id' => $admission->id,
-            'request_data' => $request->all(),
-            'user_id'      => auth()->id(),
-        ]);
-
         $request->validate([
             'group_id' => ['required', 'exists:groups,id'],
         ]);
 
         try {
-            // تشغيل مباشر بدلاً من Job
-            $admission->update([
-                'status'      => 'approved',
-                'group_id'    => $request->group_id,
-                'approved_at' => now(),
-                'approved_by' => auth()->id(),
-            ]);
+            $student = $this->admissionService->approveAdmission($admission, (int) $request->group_id);
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'success' => true,
-                    'message' => "تم قبول انتساب {$admission->student_name} بنجاح",
+                    'success'    => true,
+                    'message'    => "تم قبول انتساب {$admission->student_name} بنجاح وإنشاء حساباته",
+                    'student_id' => $student->id,
                 ]);
             }
 
@@ -354,13 +332,12 @@ class AdmissionController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'حدث خطأ أثناء قبول الطلب: ' . $e->getMessage(),
+                    'message' => config('app.debug') ? $e->getMessage() : 'حدث خطأ أثناء قبول الطلب',
                 ], 500);
             }
 
             return back()->with('error', 'حدث خطأ أثناء قبول الطلب');
         }
-
     }
 
     /**
@@ -395,11 +372,11 @@ class AdmissionController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage(),
+                    'message' => config('app.debug') ? $e->getMessage() : 'حدث خطأ أثناء رفض الطلب',
                 ], 500);
             }
 
-            return back()->with('error', $e->getMessage());
+            return back()->with('error', 'حدث خطأ أثناء رفض الطلب');
         }
     }
 
@@ -644,30 +621,4 @@ class AdmissionController extends Controller
         }
     }
 
-    /**
-     * تحويل الطلب إلى طالب مباشرة (استخدام method من الموديل)
-     */
-    public function convertToStudent(Request $request, Admission $admission)
-    {
-        $request->validate([
-            'group_id' => ['nullable', 'exists:groups,id'],
-        ]);
-
-        try {
-            $student = $admission->convertToStudent($request->group_id);
-
-            return response()->json([
-                'success'      => true,
-                'message'      => "تم تحويل الطلب إلى طالب بنجاح",
-                'student_id'   => $student->id,
-                'redirect_url' => route('admin.students.show', $student),
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-    }
 }

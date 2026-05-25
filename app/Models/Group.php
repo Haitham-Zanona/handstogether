@@ -2,6 +2,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Group extends Model
 {
@@ -20,7 +21,6 @@ class Group extends Model
         'is_active' => 'boolean',
     ];
 
-    // ✅ العلاقة الصحيحة
     public function students()
     {
         return $this->hasMany(Student::class);
@@ -60,24 +60,20 @@ class Group extends Model
         )->whereNotNull('group_subjects.teacher_id');
     }
 
-    // ✅ دالة محدثة لإضافة الطالب
-    public function addStudent(Student $student)
+    public function addStudent(Student $student): self
     {
-        // التحقق من وجود مساحة في المجموعة الحالية
         if ($this->students_count < $this->max_capacity) {
             $student->update(['group_id' => $this->id]);
             $this->increment('students_count');
             return $this;
         }
 
-        // إنشاء شعبة جديدة إذا وصلت للحد الأقصى
-        $newGroup = $this->createNewSection();
+        $newGroup = DB::transaction(fn () => $this->createNewSection());
         $student->update(['group_id' => $newGroup->id]);
         return $newGroup;
     }
 
-    // ✅ دالة محدثة لإزالة الطالب
-    public function removeStudent(Student $student)
+    public function removeStudent(Student $student): self
     {
         if ($student->group_id === $this->id) {
             $student->update(['group_id' => null]);
@@ -88,7 +84,6 @@ class Group extends Model
         return $this;
     }
 
-    // ✅ دالة جديدة لنقل الطالب
     public function transferStudentTo(Student $student, Group $targetGroup)
     {
         if ($student->group_id === $this->id) {
@@ -112,24 +107,24 @@ class Group extends Model
         $sectionLetter    = $this->getSectionLetter($newSectionNumber);
 
         $newGroup = self::create([
-            'name'           => $this->grade_level . ' - الشعبة ' . $sectionLetter,
+            'name'           => "{$this->grade_level} - الشعبة {$sectionLetter}",
             'grade_level'    => $this->grade_level,
             'section'        => $sectionLetter,
             'section_number' => $newSectionNumber,
-            'students_count' => 1, // الطالب الجديد
+            'students_count' => 1,
             'max_capacity'   => $this->max_capacity,
             'is_active'      => true,
-            'description'    => 'شعبة جديدة لطلاب ' . $this->grade_level,
+            'description'    => "شعبة جديدة لطلاب {$this->grade_level}",
         ]);
 
         $this->copySubjectsToNewGroup($newGroup);
         return $newGroup;
     }
 
-    private function getSectionLetter($sectionNumber)
+    private function getSectionLetter(int $sectionNumber): string
     {
         $letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي', 'ك', 'ل', 'م', 'ن'];
-        return $letters[($sectionNumber - 1) % count($letters)];
+        return $letters[($sectionNumber - 1) % \count($letters)];
     }
 
     public static function getAvailableGroups($gradeLevel = null)
@@ -172,9 +167,9 @@ class Group extends Model
         return $this->students_count < $this->max_capacity && $this->is_active;
     }
 
-    public function getFullNameAttribute()
+    public function getFullNameAttribute(): string
     {
-        return $this->grade_level . ' - الشعبة ' . $this->section;
+        return "{$this->grade_level} - الشعبة {$this->section}";
     }
 
     private function copySubjectsToNewGroup($newGroup)
@@ -197,12 +192,6 @@ class Group extends Model
         return $this->hasMany(GroupSubject::class);
     }
 
-    // ✅ دالة محدثة لعدد الطلاب الحقيقي
-    public function getRealStudentsCountAttribute()
-    {
-        return $this->students()->count();
-    }
-
     public function getTodayLectures()
     {
         return $this->lectures()
@@ -212,7 +201,6 @@ class Group extends Model
             ->get();
     }
 
-    // ✅ دالة للتحقق من صحة عدد الطلاب
     public function syncStudentsCount()
     {
         $realCount = $this->students()->count();
