@@ -1,81 +1,63 @@
 @extends('layouts.public')
 
 @section('content')
-<div class="flex items-center justify-center min-h-screen px-4 py-12 bg-gray-50 sm:px-6 lg:px-8">
+<div class="flex items-center justify-center min-h-screen px-4 py-12 bg-gray-50">
     <div class="w-full max-w-md space-y-8">
+
         <div class="text-center">
-            <div class="inline-block px-4 py-2 mb-4 text-2xl font-bold text-white bg-blue-600 rounded">
+            <div class="inline-block px-4 py-2 mb-4 text-2xl font-bold text-white rounded bg-primary">
                 الأكاديمية التعليمية
             </div>
-            <h2 class="text-3xl font-bold text-gray-900">
-                بوابة المدرسين
-            </h2>
-            <p class="mt-2 text-sm text-gray-600">
-                يرجى إدخال بياناتك للدخول إلى لوحة التحكم الخاصة بالمدرسين
-            </p>
+            <h2 class="text-3xl font-bold text-gray-900">بوابة المدرسين</h2>
+            <p class="mt-2 text-sm text-gray-600">يرجى إدخال بياناتك للدخول إلى النظام</p>
         </div>
 
-        <form class="mt-8 space-y-6" action="{{ route('login') }}" method="POST">
+        <form class="mt-8 space-y-6" action="{{ route('login.teacher') }}" method="POST">
             @csrf
-            <input type="hidden" name="role" value="teacher">
 
             <div class="space-y-4">
-                <!-- Email -->
+                {{-- رقم الهوية --}}
                 <div>
-                    <label for="email" class="block mb-2 text-sm font-medium text-gray-700">البريد الإلكتروني</label>
-                    <input id="email" name="email" type="email" required
-                        class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm @error('email') border-red-500 @enderror"
-                        placeholder="أدخل بريدك الإلكتروني" value="{{ old('email') }}">
-                    @error('email')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Password -->
-                <div>
-                    <label for="password" class="block mb-2 text-sm font-medium text-gray-700">كلمة المرور</label>
-                    <input id="password" name="password" type="password" required
-                        class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm @error('password') border-red-500 @enderror"
-                        placeholder="أدخل كلمة المرور">
-                    @error('password')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <!-- Remember Me -->
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <input id="remember_me" name="remember" type="checkbox"
-                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                    <label for="remember_me" class="block mr-2 text-sm text-gray-900">
-                        تذكرني
+                    <label for="national_id" class="block mb-2 text-sm font-medium text-gray-700">
+                        رقم الهوية
                     </label>
+                    <input id="national_id" name="national_id" type="text" required maxlength="9"
+                        class="appearance-none block w-full px-3 py-2 border rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm
+                               {{ $errors->has('national_id') ? 'border-red-500' : 'border-gray-300' }}"
+                        placeholder="أدخل رقم الهوية (9 أرقام)"
+                        value="{{ old('national_id') }}"
+                        inputmode="numeric">
+                    @error('national_id')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
 
-                <div class="text-sm">
-                    <a href="#" class="font-medium text-blue-600 hover:text-blue-500">
-                        نسيت كلمة المرور؟
-                    </a>
+                {{-- كلمة المرور --}}
+                <div>
+                    <label for="password" class="block mb-2 text-sm font-medium text-gray-700">
+                        كلمة المرور
+                    </label>
+                    <input id="password" name="password" type="password" required
+                        class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                        placeholder="تاريخ الميلاد — مثال: 05011990">
+                    <p class="mt-1.5 text-xs text-gray-400">
+                        تاريخ الميلاد بصيغة: يومين + شهرين + 4 أرقام للسنة &lrm;(DDMMYYYY)
+                    </p>
                 </div>
             </div>
 
-            <!-- Submit Button -->
-            <div>
-                <button type="submit"
-                    class="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white transition duration-300 bg-blue-600 border border-transparent rounded-md group hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <span class="absolute inset-y-0 right-0 flex items-center pl-3">
-                        <svg class="w-5 h-5 text-blue-300 group-hover:text-blue-400" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path
-                                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v-2L3.257 9.257A6 6 0 0111 3h4a6 6 0 012 2v2z" />
-                        </svg>
-                    </span>
-                    تسجيل الدخول
-                </button>
-            </div>
+            {{-- زر الدخول --}}
+            <button type="submit"
+                class="relative flex justify-center w-full px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition">
+                <span class="absolute inset-y-0 right-0 flex items-center pr-3">
+                    <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v-2L3.257 9.257A6 6 0 0111 3h4a6 6 0 012 2v2z"/>
+                    </svg>
+                </span>
+                تسجيل الدخول
+            </button>
 
-            <!-- Alternative Portals -->
+            {{-- بوابات أخرى --}}
             <div class="mt-6">
                 <div class="relative">
                     <div class="absolute inset-0 flex items-center">
@@ -85,30 +67,29 @@
                         <span class="px-2 text-gray-500 bg-gray-50">أو اختر بوابة أخرى</span>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-3 gap-3 mt-6">
+                <div class="grid grid-cols-3 gap-3 mt-4">
                     <a href="{{ route('portal.admin') }}"
-                        class="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
+                        class="inline-flex justify-center px-3 py-2 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
                         الإداريين
                     </a>
                     <a href="{{ route('portal.parent') }}"
-                        class="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
+                        class="inline-flex justify-center px-3 py-2 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
                         أولياء الأمور
                     </a>
                     <a href="{{ route('portal.student') }}"
-                        class="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
+                        class="inline-flex justify-center px-3 py-2 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
                         الطلبة
                     </a>
                 </div>
             </div>
 
-            <!-- Back to Home -->
             <div class="text-center">
-                <a href="{{ route('home') }}" class="text-sm text-gray-600 hover:text-blue-600">
+                <a href="{{ route('home') }}" class="text-sm text-gray-500 hover:text-primary">
                     ← العودة إلى الصفحة الرئيسية
                 </a>
             </div>
         </form>
+
     </div>
 </div>
 @endsection

@@ -13,7 +13,30 @@ class AuthController extends Controller
 
     public function teacherLogin()
     {
-        return view('auth.login', ['role' => 'teacher', 'title' => 'بوابة المدرسين']);
+        return view('auth.teacher-login');
+    }
+
+    public function authenticateTeacher(Request $request)
+    {
+        $data = $request->validate([
+            'national_id' => 'required|string',
+            'password'    => 'required|string',
+        ]);
+
+        $user = \App\Models\User::where('national_id', $data['national_id'])
+            ->where('role', 'teacher')
+            ->where('is_active', true)
+            ->first();
+
+        if ($user && \Illuminate\Support\Facades\Hash::check($data['password'], $user->password)) {
+            Auth::login($user);
+            $request->session()->regenerate();
+            return redirect()->route('teacher.dashboard');
+        }
+
+        return back()->withErrors([
+            'national_id' => 'رقم الهوية أو كلمة المرور غير صحيحة',
+        ])->onlyInput('national_id');
     }
 
     public function parentLogin()

@@ -126,7 +126,7 @@ $pageDescription = 'متابعة حضور الطلاب وتسجيلاتهم';
                         <tr class="hover:bg-gray-50 transition">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold flex-shrink-0"
+                                    <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold shrink-0"
                                          x-text="s.name.charAt(0)"></div>
                                     <span class="font-medium text-gray-900 text-sm" x-text="s.name"></span>
                                 </div>
@@ -174,7 +174,7 @@ $pageDescription = 'متابعة حضور الطلاب وتسجيلاتهم';
     {{-- Student Detail Modal --}}
     <div x-show="modalOpen" x-cloak
          class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black bg-opacity-40" @click="modalOpen = false"></div>
+        <div class="absolute inset-0 bg-black/40" @click="modalOpen = false"></div>
         <div class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-screen overflow-y-auto">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                 <div>

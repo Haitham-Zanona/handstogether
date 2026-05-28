@@ -16,7 +16,7 @@
 
 <!-- Overlay للموبايل -->
 <div id="sidebarOverlay"
-    class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden hidden transition-opacity duration-300"></div>
+    class="fixed inset-0 bg-black/50 z-30 lg:hidden hidden transition-opacity duration-300"></div>
 
 <!-- القائمة الجانبية المحدثة -->
 <aside id="sidebar"
@@ -107,13 +107,13 @@
                         <path
                             d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    الدفعات الشهرية
+                    القسم المالي
                 </a>
             </li>
 
             <li>
-                <a href="{{ route('admin.payments') }}"
-                    class="flex items-center px-6 py-3 text-white hover:bg-secondary rounded-r-lg mx-2 transition-colors duration-200 {{ request()->routeIs('admin.payments*') ? 'bg-secondary' : '' }}">
+                <a href="{{ route('admin.staff') }}"
+                    class="flex items-center px-6 py-3 text-white hover:bg-secondary rounded-r-lg mx-2 transition-colors duration-200 {{ request()->routeIs('admin.staff*') ? 'bg-secondary' : '' }}">
                     <svg class="w-5 h-5 ml-3" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="30" cy="25" r="8" fill="#fff" stroke="#fff" stroke-width="1" />
                         <rect x="22" y="33" width="16" height="20" rx="3" fill="#fff" stroke="#fff" stroke-width="1" />
@@ -126,6 +126,28 @@
                         <line x1="15" y1="75" x2="85" y2="75" stroke="#fff" stroke-width="2" />
                     </svg>
                     إدارة العاملين
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('admin.grades.index') }}"
+                    class="flex items-center px-6 py-3 text-white hover:bg-secondary rounded-r-lg mx-2 transition-colors duration-200 {{ request()->routeIs('admin.grades*') ? 'bg-secondary' : '' }}">
+                    <svg class="w-5 h-5 ml-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    الدرجات والتقييمات
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('admin.archive') }}"
+                    class="flex items-center px-6 py-3 text-white hover:bg-secondary rounded-r-lg mx-2 transition-colors duration-200 {{ request()->routeIs('admin.archive*') ? 'bg-secondary' : '' }}">
+                    <svg class="w-5 h-5 ml-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                    </svg>
+                    الأرشيف
                 </a>
             </li>
 

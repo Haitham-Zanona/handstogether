@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\AdmissionController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GradeController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ParentController;
@@ -24,6 +25,7 @@ Route::prefix('portal')->group(function () {
 
 // Custom authentication route
 Route::post('/login', [AuthController::class, 'authenticate'])->name('login');
+Route::post('/login/teacher', [AuthController::class, 'authenticateTeacher'])->name('login.teacher');
 
 // Protected routes with role middleware
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -167,6 +169,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             // إدارة المحاضرات
             Route::post('/', [AdminController::class, 'storeLecture'])->name('store');
+            Route::put('/{lecture}', [AdminController::class, 'updateLecture'])->name('update');
 
             // السلاسل المتكررة
             Route::post('/series', [AdminController::class, 'createLectureSeries'])->name('series.store');
@@ -197,7 +200,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/notify/{studentId}', [AdminController::class, 'notifyStudentLowAttendance'])->name('notify');
         });
         Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
+        // Payment API routes - literal routes must come before {payment} wildcards
+        Route::get('/payments/due',              [AdminController::class, 'getDuePayments'])->name('payments.due');
+        Route::get('/payments/history',          [AdminController::class, 'getPaymentHistory'])->name('payments.history');
+        Route::get('/payments/export',           [AdminController::class, 'exportPayments'])->name('payments.export');
+        Route::get('/payments/report-data',      [AdminController::class, 'getFinancialReport'])->name('payments.report-data');
+        Route::get('/payments/student-search',   [AdminController::class, 'searchStudentsForPayment'])->name('payments.student-search');
+        Route::get('/payments/groups-list',      [AdminController::class, 'getGroupsForPayments'])->name('payments.groups-list');
+        Route::post('/payments/add-custom',      [AdminController::class, 'addCustomPayment'])->name('payments.add-custom');
+        Route::post('/payments/send-reminders',  [AdminController::class, 'sendFilteredReminders'])->name('payments.send-reminders');
+        Route::post('/payments/{payment}/remind',[AdminController::class, 'sendPaymentReminder'])->name('payments.remind');
+        Route::post('/payments/{payment}/record',  [AdminController::class, 'recordPayment'])->name('payments.record');
+        Route::put('/payments/{payment}/update',   [AdminController::class, 'updatePaymentData'])->name('payments.update');
+        Route::delete('/payments/{payment}',       [AdminController::class, 'destroyPayment'])->name('payments.destroy');
+
         Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
+
+        Route::get('/archive',                        [GradeController::class, 'adminArchive'])->name('archive');
+        Route::get('/archive/groups',                 [GradeController::class, 'getArchivedGroupsData'])->name('archive.groups');
+        Route::get('/archive/stats',                  [GradeController::class, 'getArchiveStats'])->name('archive.stats');
+
+        Route::prefix('grades')->name('grades.')->group(function () {
+            Route::get('/',             [GradeController::class, 'adminIndex'])->name('index');
+            Route::get('/groups',       [GradeController::class, 'getGroupsData'])->name('groups');
+            Route::get('/data',         [GradeController::class, 'getGradesData'])->name('data');
+            Route::post('/evaluations', [GradeController::class, 'saveEvaluationsBatch'])->name('evaluations.save');
+            Route::post('/tests',       [GradeController::class, 'saveTestsBatch'])->name('tests.save');
+            Route::post('/final',       [GradeController::class, 'saveFinalBatch'])->name('final.save');
+            Route::put('/groups/{group}/settings',    [GradeController::class, 'updateGroupGradeSettings'])->name('groups.settings');
+            Route::post('/groups/{group}/final-exam', [GradeController::class, 'toggleGroupFinalExam'])->name('groups.final-exam');
+            Route::post('/groups/{group}/archive',    [GradeController::class, 'archiveGroup'])->name('groups.archive');
+        });
+
+        Route::get('/staff', [AdminController::class, 'staff'])->name('staff');
+        Route::get('/staff/data', [AdminController::class, 'getTeachersData'])->name('staff.data');
+        Route::get('/staff/groups', [AdminController::class, 'getGroupsForStaff'])->name('staff.groups');
+        Route::post('/staff', [AdminController::class, 'storeTeacher'])->name('staff.store');
+        Route::put('/staff/{teacher}', [AdminController::class, 'updateTeacher'])->name('staff.update');
+        Route::delete('/staff/{teacher}', [AdminController::class, 'destroyTeacher'])->name('staff.destroy');
 
         // Settings Routes
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
@@ -216,6 +256,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // التقارير والإشعارات 🆕
         Route::post('/reports/low-attendance', [AdminController::class, 'lowAttendanceReport'])->name('reports.low-attendance');
 
+        // تعديل بيانات الطالب
+        Route::get('/students/{student}/edit-data', [AdminController::class, 'getStudentEditData'])->name('students.edit-data');
+        Route::put('/students/{student}', [AdminController::class, 'updateStudent'])->name('students.update');
+
     });
 
     // Public pages
@@ -231,11 +275,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:teacher')->prefix('teacher')->name('teacher.')->group(function () {
         Route::get('/dashboard', [TeacherController::class, 'dashboard'])->name('dashboard');
         Route::get('/schedule', [TeacherController::class, 'schedule'])->name('schedule');
-        Route::get('/students', [TeacherController::class, 'students'])->name('students');
         Route::get('/attendance', [TeacherController::class, 'attendance'])->name('attendance');
         Route::get('/reports', [TeacherController::class, 'reports'])->name('reports');
-        Route::post('/lectures/{lecture}/mark-attendance', [TeacherController::class, 'markAttendance'])->name('lectures.mark-attendance');
-        Route::post('/lectures/{lecture}/bulk-present', [TeacherController::class, 'bulkMarkPresent'])->name('lectures.bulk-present');
+        Route::get('/reports/data', [TeacherController::class, 'getReportsData'])->name('reports.data');
+        Route::get('/groups/{group}', [TeacherController::class, 'showGroup'])->name('groups.show');
+        Route::prefix('grades')->name('grades.')->group(function () {
+            Route::get('/',             [GradeController::class, 'teacherIndex'])->name('index');
+            Route::get('/groups',       [GradeController::class, 'getGroupsData'])->name('groups');
+            Route::get('/data',         [GradeController::class, 'getGradesData'])->name('data');
+            Route::post('/evaluations', [GradeController::class, 'saveEvaluationsBatch'])->name('evaluations.save');
+            Route::post('/tests',       [GradeController::class, 'saveTestsBatch'])->name('tests.save');
+            Route::post('/final',       [GradeController::class, 'saveFinalBatch'])->name('final.save');
+        });
+        // Teacher lectures management (static routes before parameterized)
+        Route::get('/lectures',                                      [TeacherController::class, 'lecturesIndex'])->name('lectures.index');
+        Route::get('/lectures/data',                                 [TeacherController::class, 'getTeacherLecturesData'])->name('lectures.data');
+        Route::get('/lectures/groups-data',                          [TeacherController::class, 'getTeacherGroupData'])->name('lectures.groups-data');
+        Route::post('/lectures',                                     [TeacherController::class, 'storeTeacherLecture'])->name('lectures.store');
+        Route::put('/lectures/{lecture}',                            [TeacherController::class, 'updateTeacherLecture'])->name('lectures.update');
+        Route::delete('/lectures/{lecture}',                         [TeacherController::class, 'destroyTeacherLecture'])->name('lectures.destroy');
+        Route::patch('/lectures/{lecture}/reschedule',               [TeacherController::class, 'rescheduleTeacherLecture'])->name('lectures.reschedule');
+        Route::patch('/lectures/{lecture}/cancel',                   [TeacherController::class, 'cancelTeacherLecture'])->name('lectures.cancel');
+        Route::get('/lectures/{lecture}/attendance-students',        [TeacherController::class, 'getTeacherLectureStudents'])->name('lectures.attendance-students');
+        Route::post('/lectures/{lecture}/attendance',                [TeacherController::class, 'saveTeacherLectureAttendance'])->name('lectures.attendance');
+        Route::post('/lectures/{lecture}/mark-attendance',           [TeacherController::class, 'markAttendance'])->name('lectures.mark-attendance');
+        Route::post('/lectures/{lecture}/bulk-present',              [TeacherController::class, 'bulkMarkPresent'])->name('lectures.bulk-present');
     });
 
     // Parent routes

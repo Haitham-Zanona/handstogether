@@ -34,9 +34,8 @@ class StoreAdmissionRequest extends FormRequest
             'mother_phone'       => 'nullable|string|regex:/^05\d{8}$/',
             'address'            => 'required|string',
             'monthly_fee'        => 'required|numeric|min:0',
+            'num_payments'       => 'required|integer|min:1|max:120',
             'study_start_date'   => 'required|date',
-            'payment_due_from'   => 'required|date',
-            'payment_due_to'     => 'required|date',
 
         ];
 
@@ -101,11 +100,12 @@ class StoreAdmissionRequest extends FormRequest
             'monthly_fee.numeric'              => 'قيمة الرسوم الشهرية يجب أن تكون رقماً',
             'monthly_fee.min'                  => 'قيمة الرسوم الشهرية لا يمكن أن تكون سالبة',
             'monthly_fee.max'                  => 'قيمة الرسوم الشهرية كبيرة جداً',
+            'num_payments.required'            => 'يرجى إدخال عدد الدفعات',
+            'num_payments.integer'             => 'عدد الدفعات يجب أن يكون رقماً صحيحاً',
+            'num_payments.min'                 => 'عدد الدفعات يجب أن يكون 1 على الأقل',
+            'num_payments.max'                 => 'عدد الدفعات لا يمكن أن يتجاوز 120',
             'study_start_date.required'        => 'يرجى اختيار تاريخ بدء الدراسة',
             'study_start_date.after_or_equal'  => 'تاريخ بدء الدراسة لا يمكن أن يكون في الماضي',
-            'payment_due_from.required'        => 'يرجى اختيار بداية فترة استحقاق الدفعة',
-            'payment_due_to.required'          => 'يرجى اختيار نهاية فترة استحقاق الدفعة',
-            'payment_due_to.after'             => 'نهاية فترة الاستحقاق يجب أن تكون بعد البداية',
         ];
     }
 
@@ -134,21 +134,6 @@ class StoreAdmissionRequest extends FormRequest
 
                 if (\count($nameParts) < 3) {
                     $validator->errors()->add('parent_name', 'يرجى إدخال الاسم الثلاثي كاملاً (3 أسماء على الأقل)');
-                }
-            }
-
-            // التحقق من أن تاريخ بدء الدراسة ضمن فترة الاستحقاق
-            $studyStartDate = $this->input('study_start_date');
-            $paymentDueFrom = $this->input('payment_due_from');
-            $paymentDueTo   = $this->input('payment_due_to');
-
-            if ($studyStartDate && $paymentDueFrom && $paymentDueTo) {
-                $studyStart = \Carbon\Carbon::parse($studyStartDate);
-                $dueFrom    = \Carbon\Carbon::parse($paymentDueFrom);
-                $dueTo      = \Carbon\Carbon::parse($paymentDueTo);
-
-                if ($studyStart->lt($dueFrom) || $studyStart->gt($dueTo)) {
-                    $validator->errors()->add('study_start_date', 'تاريخ بدء الدراسة يجب أن يكون ضمن فترة استحقاق الدفعة');
                 }
             }
 
@@ -183,9 +168,8 @@ class StoreAdmissionRequest extends FormRequest
             'mother_phone'       => 'رقم جوال الأم',
             'address'            => 'عنوان السكن',
             'monthly_fee'        => 'الرسوم الشهرية',
+            'num_payments'       => 'عدد الدفعات',
             'study_start_date'   => 'تاريخ بدء الدراسة',
-            'payment_due_from'   => 'بداية فترة الاستحقاق',
-            'payment_due_to'     => 'نهاية فترة الاستحقاق',
         ];
     }
 }

@@ -35,9 +35,8 @@ class Admission extends Model
         'mother_phone',
         'address',
         'monthly_fee',
+        'num_payments',
         'study_start_date',
-        'payment_due_from',
-        'payment_due_to',
         'status',
         'group_id',
         'rejection_reason',
@@ -56,8 +55,6 @@ class Admission extends Model
         'application_date' => 'date',
         'birth_date'       => 'date',
         'study_start_date' => 'date',
-        'payment_due_from' => 'date',
-        'payment_due_to'   => 'date',
         'monthly_fee'      => 'decimal:2',
     ];
 

@@ -341,7 +341,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 
                 <!-- زر الإضافة -->
                 <button onclick="openAddAdmissionModal()"
-                    class="px-4 py-2 text-sm font-medium text-white transition-colors rounded-md bg-primary hover:bg-blue-700">
+                    class="px-4 py-2 mr-2 text-sm font-medium text-white transition-colors rounded-md bg-primary hover:bg-blue-700">
                     إضافة طلب جديد
                 </button>
             </div>
@@ -415,12 +415,12 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                         <div class="flex items-center space-x-2 space-x-reverse">
                             <!-- Approve Button -->
                             <button onclick="openApproveModal({{ $admission->id }}, '{{ $admission->student_name }}')"
-                                class="font-semibold text-green-600 transition-colors duration-200 hover:text-green-800">
+                                class="font-semibold mr-1 text-green-600 transition-colors duration-200 hover:text-green-800">
                                 قبول
                             </button>
                             <!-- Reject Button -->
                             <button onclick="openRejectModal({{ $admission->id }})"
-                                class="font-semibold text-red-600 transition-colors duration-200 hover:text-red-800">
+                                class="font-semibold mr-1 text-red-600 transition-colors duration-200 hover:text-red-800">
                                 رفض
                             </button>
                         </div>
@@ -447,7 +447,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 </div>
 
 <!-- Add New Admission Modal -->
-<div id="add-admission-modal" class="fixed inset-0 z-50 hidden w-full h-full overflow-y-auto bg-gray-600 bg-opacity-50">
+<div id="add-admission-modal" class="fixed inset-0 z-50 hidden w-full h-full overflow-y-auto bg-gray-600/50">
     <div class="relative max-w-4xl mx-auto bg-white border rounded-lg shadow-lg top-10">
         <!-- Modal Header -->
         <div class="flex items-center justify-between p-4 border-b border-gray-200">
@@ -479,7 +479,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                         <div>
                             <label class="block mb-2 text-sm font-medium">اليوم</label>
                             <select name="day" id="day"
-                                class="w-full px-8 py-2 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                                class="w-full px-8 py-2 text-black bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
                                 <option value="">اختر اليوم</option>
                                 <option value="الأحد">الأحد</option>
                                 <option value="الإثنين">الإثنين</option>
@@ -495,7 +495,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                         <div>
                             <label class="block mb-2 text-sm font-medium">تاريخ تقديم الطلب</label>
                             <input type="date" name="application_date" id="application_date"
-                                class="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                class="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                                 placeholder="YYYY-MM-DD" required>
                             <div class="error-message">يرجى اختيار تاريخ تقديم الطلب</div>
                         </div>
@@ -503,7 +503,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                         <div>
                             <label class="block mb-2 text-sm font-medium">رقم الطلب</label>
                             <input type="text" name="application_number" id="application_number"
-                                class="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                class="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                                 placeholder="0000" required>
                             <div id="success-message-app-number" class="mt-1 text-sm text-green-600"
                                 style="display: none;">
@@ -655,7 +655,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                     <h4 class="pb-2 mb-4 text-lg font-semibold text-blue-700 border-b-2 border-orange-500">💰 المعلومات
                         المالية
                     </h4>
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
                         <div>
                             <label class="block mb-2 text-sm font-medium">قيمة القسط الشهري</label>
                             <input type="number" name="monthly_fee" id="monthly_fee"
@@ -664,30 +664,20 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                             <div class="error-message">يرجى إدخال قيمة الرسوم الشهرية</div>
                         </div>
                         <div>
+                            <label class="block mb-2 text-sm font-medium">عدد الدفعات</label>
+                            <input type="number" name="num_payments" id="num_payments"
+                                class="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600"
+                                placeholder="10" min="1" max="120" required>
+                            <p class="mt-1 text-xs text-gray-500">عدد الأقساط الشهرية المطلوبة</p>
+                            <div class="error-message">يرجى إدخال عدد الدفعات</div>
+                        </div>
+                        <div>
                             <label class="block mb-2 text-sm font-medium">تاريخ بدء الدراسة</label>
                             <input type="date" name="study_start_date" id="study_start_date"
                                 class="w-full px-3 py-2 text-black transition-colors duration-200 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600"
                                 placeholder="YYYY-MM-DD" required>
                             <div class="error-message">يرجى اختيار تاريخ بدء الدراسة</div>
                         </div>
-                    </div>
-                    <div class="mt-2 md:col-span-2">
-                        <label class="block mb-2 text-sm font-medium">فترة استحقاق الدفعة الشهرية</label>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block mb-1 text-xs text-gray-500">من تاريخ</label>
-                                <input type="date" name="payment_due_from" id="payment_due_from"
-                                    class="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 transition-all duration-200"
-                                    required>
-                            </div>
-                            <div>
-                                <label class="block mb-1 text-xs text-gray-500">إلى تاريخ</label>
-                                <input type="date" name="payment_due_to" id="payment_due_to"
-                                    class="w-full px-3 py-2 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 transition-all duration-200"
-                                    required>
-                            </div>
-                        </div>
-                        <div class="error-message">يرجى تحديد فترة استحقاق الدفعة</div>
                     </div>
                 </div>
 
@@ -711,7 +701,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 </div>
 
 <!-- Success Modal -->
-<div id="success-modal" class="fixed inset-0 hidden w-full h-full bg-gray-600 bg-opacity-50 z-60">
+<div id="success-modal" class="fixed inset-0 hidden w-full h-full bg-gray-600/50 z-60">
     <div class="relative max-w-lg mx-auto mt-20 success-popup">
         <!-- Progress Bar -->
         <div class="progress-bar"></div>
@@ -742,7 +732,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 </div>
 
 <!-- Approve Modal -->
-<div id="approve-modal" class="fixed inset-0 z-50 hidden w-full h-full overflow-y-auto bg-gray-600 bg-opacity-50">
+<div id="approve-modal" class="fixed inset-0 z-50 hidden w-full h-full overflow-y-auto bg-gray-600/50">
     <div class="relative p-5 mx-auto bg-white border rounded-md shadow-lg top-20 w-96">
         <div class="mt-3">
             <h3 class="mb-4 text-lg font-medium text-center text-gray-900">قبول طلب الانتساب</h3>
@@ -775,7 +765,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 </div>
 
 <!-- Reject Modal -->
-<div id="reject-modal" class="fixed inset-0 z-50 hidden bg-gray-600 bg-opacity-50">
+<div id="reject-modal" class="fixed inset-0 z-50 hidden bg-gray-600/50">
     <div class="relative p-5 mx-auto mt-20 bg-white rounded shadow w-96">
         <h3 class="mb-4 text-lg font-medium text-center">رفض الطلب</h3>
         <form id="reject-form" method="POST">
@@ -816,147 +806,8 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
         const nameSearch = document.getElementById('nameSearch');
 
         const studyStartDateInput = document.getElementById('study_start_date');
-        const paymentDueFromInput = document.getElementById('payment_due_from');
-        const paymentDueToInput = document.getElementById('payment_due_to');
 
 
-    // دالة لإضافة أيام لتاريخ معين
-    function addDaysToDate(date, days) {
-    const result = new Date(date);
-    result.setDate(result.getDate() + days);
-    return result;
-    }
-
-    // دالة لتحويل التاريخ إلى صيغة YYYY-MM-DD
-    function formatDateForInput(date) {
-    return date.toISOString().split('T')[0];
-    }
-
-    // دالة تحديث تواريخ الدفعة
-    // function updatePaymentDates() {
-    // const studyStartDate = studyStartDateInput.value;
-
-    // if (studyStartDate) {
-    // console.log('تحديث تواريخ الدفعة لتاريخ:', studyStartDate);
-
-    // // تحويل التاريخ المختار إلى كائن Date
-    // const startDate = new Date(studyStartDate);
-
-    // // تعيين "من تاريخ" نفس قيمة تاريخ بدء الدراسة
-    // paymentDueFromInput.value = studyStartDate;
-
-    // // تعيين "إلى تاريخ" بإضافة 3 أيام
-    // const endDate = addDaysToDate(startDate, 3);
-    // paymentDueToInput.value = formatDateForInput(endDate);
-
-    // // إضافة تأثير بصري لإظهار أن القيم تم تحديثها
-    // paymentDueFromInput.style.backgroundColor = '#e6f3ff';
-    // paymentDueToInput.style.backgroundColor = '#e6f3ff';
-    // paymentDueFromInput.style.transition = 'background-color 0.3s ease';
-    // paymentDueToInput.style.transition = 'background-color 0.3s ease';
-
-    // // إزالة التأثير البصري بعد ثانيتين
-    // setTimeout(function() {
-    // paymentDueFromInput.style.backgroundColor = '';
-    // paymentDueToInput.style.backgroundColor = '';
-    // }, 2000);
-
-    // console.log('تم تحديث التواريخ:', {
-    // from: paymentDueFromInput.value,
-    // to: paymentDueToInput.value
-    // });
-
-    // // إظهار رسالة نجاح
-    // showNotification('تم تحديث تواريخ الدفعة تلقائياً', 'success', 2000);
-    // } else {
-    // // إذا تم مسح تاريخ بدء الدراسة، مسح تواريخ الدفعة أيضاً
-    // paymentDueFromInput.value = '';
-    // paymentDueToInput.value = '';
-    // }
-    // }
-
-
-    // دالة تحديث تواريخ الدفعة
-    function updatePaymentDates() {
-    const studyStartDate = studyStartDateInput.value;
-
-    if (studyStartDate) {
-    console.log('تحديث تواريخ الدفعة لتاريخ:', studyStartDate);
-
-    // تحويل التاريخ المختار إلى كائن Date
-    const startDate = new Date(studyStartDate);
-
-    // تعيين "من تاريخ" نفس قيمة تاريخ بدء الدراسة
-    paymentDueFromInput.value = studyStartDate;
-
-    // تعيين "إلى تاريخ" بإضافة 3 أيام
-    const endDate = addDaysToDate(startDate, 3);
-    paymentDueToInput.value = formatDateForInput(endDate);
-
-    // تحديث Flatpickr إذا كان موجود
-    if (paymentDueFromInput._flatpickr) {
-    paymentDueFromInput._flatpickr.setDate(studyStartDate);
-    }
-
-    if (paymentDueToInput._flatpickr) {
-    paymentDueToInput._flatpickr.setDate(formatDateForInput(endDate));
-    }
-
-    // إضافة تأثير بصري
-    const fromDisplay = document.querySelector('input[data-input][readonly]');
-    const toDisplay = document.querySelectorAll('input[data-input][readonly]')[1];
-
-    if (fromDisplay) {
-    fromDisplay.style.backgroundColor = '#e6f3ff';
-    setTimeout(() => fromDisplay.style.backgroundColor = '', 2000);
-    }
-
-    if (toDisplay) {
-    toDisplay.style.backgroundColor = '#e6f3ff';
-    setTimeout(() => toDisplay.style.backgroundColor = '', 2000);
-    }
-
-    console.log('تم تحديث التواريخ:', {
-    from: paymentDueFromInput.value,
-    to: paymentDueToInput.value
-    });
-
-    showNotification('تم تحديث تواريخ الدفعة تلقائياً', 'success', 2000);
-    } else {
-    paymentDueFromInput.value = '';
-    paymentDueToInput.value = '';
-
-    if (paymentDueFromInput._flatpickr) {
-    paymentDueFromInput._flatpickr.clear();
-    }
-
-    if (paymentDueToInput._flatpickr) {
-    paymentDueToInput._flatpickr.clear();
-    }
-    }
-    }
-
-
-    // دالة تحديث "إلى تاريخ" عند تغيير "من تاريخ" يدوياً
-    function updatePaymentToDate() {
-    const fromDate = paymentDueFromInput.value;
-
-    if (fromDate) {
-    const startDate = new Date(fromDate);
-    const endDate = addDaysToDate(startDate, 3);
-    paymentDueToInput.value = formatDateForInput(endDate);
-
-    // تأثير بصري
-    paymentDueToInput.style.backgroundColor = '#e6f3ff';
-    paymentDueToInput.style.transition = 'background-color 0.3s ease';
-
-    setTimeout(function() {
-    paymentDueToInput.style.backgroundColor = '';
-    }, 1500);
-
-    showNotification('تم تحديث تاريخ نهاية الدفعة', 'info', 1500);
-    }
-    }
 
 
 
@@ -1152,11 +1003,11 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                 <div class="flex items-center space-x-2 space-x-reverse">
                     ${admission.status === 'pending' ? `
                     <button onclick="openApproveModal(${admission.id}, '${admission.student_name}')"
-                        class="font-semibold text-green-600 transition-colors duration-200 hover:text-green-800">
+                        class="font-semibold mr-1 text-green-600 transition-colors duration-200 hover:text-green-800">
                         قبول
                     </button>
                     <button onclick="openRejectModal(${admission.id})"
-                        class="font-semibold text-red-600 transition-colors duration-200 hover:text-red-800">
+                        class="font-semibold mr-1 text-red-600 transition-colors duration-200 hover:text-red-800">
                         رفض
                     </button>
                     ` : `
@@ -1455,6 +1306,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
             const modal = document.getElementById('add-admission-modal');
             if (modal) {
                 modal.classList.add('hidden');
+                clearFormErrors();
                 resetForm();
             }
         }
@@ -1745,19 +1597,14 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                     const result = await response.json();
 
                     if (response.ok && result.success) {
+                        clearFormErrors();
                         showNotification('تم حفظ البيانات بنجاح!', 'success');
                         closeAddAdmissionModal();
                         showSuccessModal();
                         setTimeout(() => location.reload(), 2000);
                     } else if (response.status === 422) {
-                        const errors = result.errors;
-                        if (errors && typeof errors === 'object') {
-                            const firstKey = Object.keys(errors)[0];
-                            const firstMsg = Array.isArray(errors[firstKey]) ? errors[firstKey][0] : errors[firstKey];
-                            showNotification(firstMsg, 'error');
-                        } else {
-                            showNotification(result.message || 'يرجى مراجعة البيانات المدخلة', 'error');
-                        }
+                        const errors = result.errors || {};
+                        showFormErrors(errors);
                     } else {
                         showNotification(result.message || 'حدث خطأ أثناء حفظ البيانات', 'error');
                     }
@@ -1769,6 +1616,46 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                     submitBtn.disabled = false;
                 }
             });
+        }
+
+        function clearFormErrors() {
+            form.querySelectorAll('.field-inline-error').forEach(el => el.remove());
+            form.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+            const banner = form.querySelector('#form-error-banner');
+            if (banner) banner.remove();
+        }
+
+        function showFormErrors(errors) {
+            clearFormErrors();
+
+            // ملخص الأخطاء في أعلى النموذج
+            const messages = Object.values(errors).flat();
+            if (messages.length) {
+                const banner = document.createElement('div');
+                banner.id = 'form-error-banner';
+                banner.className = 'bg-red-50 border border-red-400 rounded-lg p-4 mb-4';
+                banner.innerHTML = `
+                    <p class="font-semibold text-red-700 mb-2">يوجد ${messages.length} خطأ في البيانات، يرجى التصحيح:</p>
+                    <ul class="list-disc list-inside text-sm text-red-600 space-y-1">
+                        ${messages.map(m => `<li>${m}</li>`).join('')}
+                    </ul>`;
+                form.prepend(banner);
+                banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // تلوين الحقول الخاطئة
+            Object.keys(errors).forEach(field => {
+                const input = form.querySelector(`[name="${field}"]`);
+                if (input) {
+                    input.classList.add('border-red-500');
+                    const msg = document.createElement('p');
+                    msg.className = 'field-inline-error text-xs text-red-600 mt-1';
+                    msg.textContent = Array.isArray(errors[field]) ? errors[field][0] : errors[field];
+                    input.parentNode.appendChild(msg);
+                }
+            });
+
+            showNotification(messages[0] || 'يرجى مراجعة البيانات المدخلة', 'error', 8000);
         }
 
         function showSuccessModal() {
@@ -1825,7 +1712,8 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                     return;
                 }
 
-                if (!window.jspdf && typeof jsPDF === 'undefined') {
+                const JsPDFClass = window.jspdf?.jsPDF;
+                if (!JsPDFClass) {
                     showNotification('مكتبة jsPDF غير متوفرة', 'error');
                     return;
                 }
@@ -1842,8 +1730,6 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                 });
 
                 document.body.removeChild(dataElement);
-
-                const { jsPDF } = window.jspdf || { jsPDF: jsPDF };
                 const imgData   = canvas.toDataURL('image/png');
 
                 // A4 dimensions in mm
@@ -1851,7 +1737,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                 const pageH  = 297;
                 const imgH   = (canvas.height * pageW) / canvas.width;
 
-                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const doc = new JsPDFClass({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
                 let remaining = imgH;
                 let offset    = 0;
@@ -1958,16 +1844,16 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                     <h3 style="color: #2778E5; margin: 0 0 15px 0; font-size: 18px;
                             border-bottom: 2px solid #EE8100; padding-bottom: 8px;">💰 المعلومات المالية</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                        <p style="margin: 0; color: #374151;"><strong>المبلغ المدفوع:</strong></p>
+                        <p style="margin: 0; color: #374151;"><strong>القسط الشهري:</strong></p>
+                        <p style="margin: 0; color: #374151;"><strong>عدد الدفعات:</strong></p>
                         <p style="margin: 0; color: #374151;"><strong>تاريخ بدء الدراسة:</strong></p>
-                        <p style="margin: 0; color: #374151;"><strong>تاريخ إستحقاق الدفعة:</strong></p>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 5px;">
                         <p style="margin: 0; color: #374151;">
                         <span style="color: #EE8100; font-weight: bold;">${savedAdmissionData.monthly_fee || '0'} شيكل</span>
                         </p>
+                        <p style="margin: 0; color: #374151;">${savedAdmissionData.num_payments || 'غير محدد'} دفعة</p>
                         <p style="margin: 0; color: #374151;">${savedAdmissionData.study_start_date || 'غير محدد'}</p>
-                        <p style="margin: 0; color: #374151;">${savedAdmissionData.payment_due_from || 'غير محدد'} - ${savedAdmissionData.payment_due_to || 'غير محدد'}</p>
                     </div>
                 </div>
 
@@ -2004,7 +1890,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
             existingNotifications.forEach(notif => notif.remove());
 
             const notification = document.createElement('div');
-            notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white max-w-sm transition-all duration-300 ${getNotificationClass(type)}`;
+            notification.className = `notification fixed top-4 right-4 z-[9999] p-4 rounded-lg shadow-lg text-white max-w-sm transition-all duration-300 ${getNotificationClass(type)}`;
             notification.style.transform = 'translateX(100%)';
             notification.style.opacity = '0';
 
@@ -2067,9 +1953,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
         const dateFields = [
             'application_date',
             'birth_date',
-            'study_start_date',
-            'payment_due_from',
-            'payment_due_to'
+            'study_start_date'
         ];
 
         dateFields.forEach(id => {
@@ -2182,32 +2066,6 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
         });
 
         // ==================== التهيئة النهائية ====================
-
-        // ========== ربط أحداث تواريخ الدفعة ==========
-        if (studyStartDateInput) {
-        studyStartDateInput.addEventListener('change', updatePaymentDates);
-        studyStartDateInput.addEventListener('input', updatePaymentDates);
-        console.log('✅ تم ربط event listener لتاريخ بدء الدراسة');
-        } else {
-        console.warn('❌ لم يتم العثور على حقل تاريخ بدء الدراسة');
-        }
-
-        if (paymentDueFromInput) {
-        paymentDueFromInput.addEventListener('change', updatePaymentToDate);
-        paymentDueFromInput.addEventListener('input', updatePaymentToDate);
-        console.log('✅ تم ربط event listener لحقل "من تاريخ"');
-        } else {
-        console.warn('❌ لم يتم العثور على حقل "من تاريخ"');
-        }
-
-        // اختبار وجود العناصر
-        console.log('فحص عناصر تواريخ الدفعة:', {
-        studyStartDate: !!studyStartDateInput,
-        paymentFrom: !!paymentDueFromInput,
-        paymentTo: !!paymentDueToInput
-        });
-
-
         loadGroups();
 
         // تصدير الدوال للنطاق العام
@@ -2225,13 +2083,8 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
         window.deleteAdmission = deleteAdmission;
         window.showAllResults = showAllResults;
 
-        window.updatePaymentDates = updatePaymentDates;
-        window.updatePaymentToDate = updatePaymentToDate;
-        window.searchByName = searchByName;
-
         console.log('%c🎓 نظام إدارة طلبات الانتساب ', 'background: #2778E5; color: #EE8100; font-size: 16px; padding: 8px; border-radius: 4px;');
         console.log('✅ تم تحميل النظام بنجاح! جميع الوظائف متاحة.');
-        showNotification('تم تحميل النظام بنجاح', 'success', 3000);
     });
 </script>
 

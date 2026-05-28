@@ -15,8 +15,11 @@ use App\Services\NotificationService;
 use App\Services\SeriesGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -783,7 +786,16 @@ class AdminController extends Controller
     public function getGroupSubjects(Request $request)
     {
         try {
-            $groupId = $request->get('group_id');
+            // Accept group ID from route model binding (/groups/{group}/subjects)
+            // OR from query string (?group_id=X) used by the for-lectures endpoint
+            $routeGroup = $request->route('group');
+            if ($routeGroup instanceof Group) {
+                $groupId = $routeGroup->id;
+            } elseif (is_numeric($routeGroup)) {
+                $groupId = (int) $routeGroup;
+            } else {
+                $groupId = (int) $request->get('group_id');
+            }
 
             if (! $groupId) {
                 return response()->json([
@@ -792,28 +804,62 @@ class AdminController extends Controller
                 ]);
             }
 
-            // جلب المواد المرتبطة بالمجموعة من جدول الربط
-            $subjects = DB::table('group_subjects')
+            // مواد المجموعة مع معلومات المدرس
+            $groupSubjects = DB::table('group_subjects')
                 ->join('subjects', 'group_subjects.subject_id', '=', 'subjects.id')
+                ->leftJoin('teachers', 'group_subjects.teacher_id', '=', 'teachers.id')
+                ->leftJoin('users', 'teachers.user_id', '=', 'users.id')
                 ->where('group_subjects.group_id', $groupId)
-                ->where('group_subjects.is_active', true)
                 ->select(
-                    'subjects.id',
-                    'subjects.name',
-                    'subjects.name as display_name',
-                    'subjects.description'
+                    'group_subjects.id as group_subject_id',
+                    'group_subjects.is_active',
+                    'group_subjects.teacher_id',
+                    'subjects.id as subject_id',
+                    'subjects.name as subject_name',
+                    'subjects.description',
+                    DB::raw('users.name as teacher_name')
                 )
-                ->get();
+                ->get()
+                ->map(fn($row) => [
+                    'id'           => $row->group_subject_id,
+                    'subject_id'   => $row->subject_id,
+                    'subject_name' => $row->subject_name,
+                    'description'  => $row->description,
+                    'teacher_id'   => $row->teacher_id,
+                    'teacher_name' => $row->teacher_name ?? 'غير محدد',
+                    'is_active'    => (bool) $row->is_active,
+                ]);
 
-            Log::info('Group subjects loaded', [
-                'group_id'       => $groupId,
-                'subjects_count' => $subjects->count(),
+            // المواد غير المضافة للمجموعة بعد
+            $assignedIds        = DB::table('group_subjects')->where('group_id', $groupId)->pluck('subject_id');
+            $availableSubjects  = Subject::whereNotIn('id', $assignedIds)->get()->map(fn($s) => [
+                'id'           => $s->id,
+                'name'         => $s->name,
+                'display_name' => $s->name,
             ]);
 
+            // جميع المدرسين النشطين
+            $availableTeachers = Teacher::with('user')
+                ->whereHas('user', fn($q) => $q->where('is_active', true))
+                ->get()
+                ->map(fn($t) => [
+                    'id'   => $t->id,
+                    'name' => $t->user?->name ?? 'غير محدد',
+                ]);
+
             return response()->json([
-                'success'  => true,
-                'subjects' => $subjects,
-                'message'  => "تم تحميل {$subjects->count()} مادة للمجموعة",
+                'success'            => true,
+                // للمحاضرات (القديم)
+                'subjects'           => $groupSubjects->map(fn($s) => [
+                    'id'           => $s['subject_id'],
+                    'name'         => $s['subject_name'],
+                    'display_name' => $s['subject_name'],
+                ]),
+                // للمجموعات modal
+                'group_subjects'     => $groupSubjects,
+                'available_subjects' => $availableSubjects,
+                'available_teachers' => $availableTeachers,
+                'message'            => "تم تحميل {$groupSubjects->count()} مادة للمجموعة",
             ]);
 
         } catch (\Exception $e) {
@@ -827,7 +873,6 @@ class AdminController extends Controller
                 'message' => 'حدث خطأ: ' . $e->getMessage(),
             ], 500);
         }
-
     }
 
 /**
@@ -1159,6 +1204,131 @@ class AdminController extends Controller
         return back()->with('success', 'تم رفض طلب الانتساب');
     }
 
+    public function staff()
+    {
+        return view('admin.staff');
+    }
+
+    public function getTeachersData()
+    {
+        $teachers = Teacher::with(['user', 'assignedGroups'])->get()->map(fn($t) => [
+            'id'              => $t->id,
+            'name'            => $t->user->name ?? '—',
+            'national_id'     => $t->user->national_id ?? '—',
+            'birth_date'      => $t->user->birth_date?->format('Y-m-d') ?? '',
+            'specializations' => $t->specializations ?? [],
+            'account_type'    => $t->account_type ?? '',
+            'account_number'  => $t->account_number ?? '',
+            'groups'          => $t->assignedGroups->map(fn($g) => ['id' => $g->id, 'name' => $g->name])->values(),
+            'is_active'       => $t->user->is_active ?? true,
+        ]);
+
+        return response()->json(['success' => true, 'teachers' => $teachers]);
+    }
+
+    public function getGroupsForStaff()
+    {
+        $groups = Group::select('id', 'name', 'grade_level')->where('is_active', true)->orderBy('name')->get();
+        return response()->json(['success' => true, 'groups' => $groups]);
+    }
+
+    public function storeTeacher(Request $request)
+    {
+        $validated = $request->validate([
+            'name'            => 'required|string|max:255',
+            'national_id'     => 'required|string|size:9|unique:users,national_id',
+            'birth_date'      => 'required|date',
+            'specializations' => 'required|array|min:1',
+            'specializations.*' => 'string',
+            'groups'          => 'nullable|array',
+            'groups.*'        => 'exists:groups,id',
+            'account_type'    => 'nullable|string|in:bank_of_palestine,pal_pay,jawwal_pay',
+            'account_number'  => 'nullable|string|max:50',
+        ]);
+
+        $birthDate = Carbon::parse($validated['birth_date']);
+        $password  = $birthDate->format('dmY'); // DDMMYYYY
+
+        $user = User::create([
+            'name'        => $validated['name'],
+            'email'       => $validated['national_id'] . '@teacher.local',
+            'national_id' => $validated['national_id'],
+            'birth_date'  => $validated['birth_date'],
+            'password'    => Hash::make($password),
+            'role'        => 'teacher',
+            'is_active'   => true,
+        ]);
+
+        $teacher = Teacher::create([
+            'user_id'         => $user->id,
+            'specializations' => $validated['specializations'],
+            'account_type'    => $validated['account_type'] ?? null,
+            'account_number'  => $validated['account_number'] ?? null,
+        ]);
+
+        if (! empty($validated['groups'])) {
+            $teacher->assignedGroups()->sync($validated['groups']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إنشاء حساب المدرس بنجاح',
+            'teacher' => [
+                'id'              => $teacher->id,
+                'name'            => $user->name,
+                'national_id'     => $user->national_id,
+                'birth_date'      => $user->birth_date->format('Y-m-d'),
+                'specializations' => $teacher->specializations,
+                'account_type'    => $teacher->account_type,
+                'account_number'  => $teacher->account_number,
+                'groups'          => $teacher->assignedGroups()->get()->map(fn($g) => ['id' => $g->id, 'name' => $g->name])->values(),
+                'is_active'       => true,
+            ],
+        ], 201);
+    }
+
+    public function updateTeacher(Request $request, Teacher $teacher)
+    {
+        $validated = $request->validate([
+            'name'            => 'required|string|max:255',
+            'national_id'     => ['required', 'string', 'size:9', Rule::unique('users', 'national_id')->ignore($teacher->user_id)],
+            'birth_date'      => 'required|date',
+            'specializations' => 'required|array|min:1',
+            'specializations.*' => 'string',
+            'groups'          => 'nullable|array',
+            'groups.*'        => 'exists:groups,id',
+            'account_type'    => 'nullable|string|in:bank_of_palestine,pal_pay,jawwal_pay',
+            'account_number'  => 'nullable|string|max:50',
+        ]);
+
+        $birthDate = Carbon::parse($validated['birth_date']);
+        $password  = $birthDate->format('dmY');
+
+        $teacher->user->update([
+            'name'        => $validated['name'],
+            'email'       => $validated['national_id'] . '@teacher.local',
+            'national_id' => $validated['national_id'],
+            'birth_date'  => $validated['birth_date'],
+            'password'    => Hash::make($password),
+        ]);
+
+        $teacher->update([
+            'specializations' => $validated['specializations'],
+            'account_type'    => $validated['account_type'] ?? null,
+            'account_number'  => $validated['account_number'] ?? null,
+        ]);
+
+        $teacher->assignedGroups()->sync($validated['groups'] ?? []);
+
+        return response()->json(['success' => true, 'message' => 'تم تحديث بيانات المدرس بنجاح']);
+    }
+
+    public function destroyTeacher(Teacher $teacher)
+    {
+        $teacher->user()->delete();
+        return response()->json(['success' => true, 'message' => 'تم حذف حساب المدرس']);
+    }
+
     public function settings()
     {
         $academySettings = [
@@ -1467,21 +1637,475 @@ class AdminController extends Controller
 
     public function payments()
     {
-        $currentMonth = now()->format('Y-m');
+        $groups = Group::select('id', 'name')->where('is_active', true)->orderBy('name')->get();
+        return view('admin.payments', compact('groups'));
+    }
 
-        $payments = Payment::with(['student.user', 'student.parent'])
-            ->where('month', $currentMonth)
-            ->latest()
-            ->paginate(20);
+    public function getDuePayments(Request $request)
+    {
+        $month   = $request->get('month', now()->format('Y-m'));
+        $groupId = $request->get('group_id');
+        $status  = $request->get('status', 'unpaid');
+        $type    = $request->get('type', 'monthly');
 
-        $paymentStats = [
-            'total_expected' => Student::count() * 1000,
-            'total_paid'     => Payment::paid()->where('month', $currentMonth)->sum('amount'),
-            'pending_count'  => Payment::pending()->where('month', $currentMonth)->count(),
-            'overdue_count'  => Payment::where('month', '<', $currentMonth)->unpaid()->count(),
+        $payments = Payment::with(['student.user', 'student.admission'])
+            ->where('month', $month)
+            ->when($type && $type !== 'all',   fn($q) => $q->where('type', $type))
+            ->when($status && $status !== 'all', fn($q) => $q->where('status', $status))
+            ->when($groupId, fn($q) => $q->whereHas('student', fn($sq) => $sq->where('group_id', $groupId)))
+            ->get()
+            ->map(fn($p) => $this->formatPayment($p));
+
+        // Stats cover all monthly payments for the selected month/group (ignore status/type filter)
+        $allMonthly = Payment::where('month', $month)
+            ->where('type', 'monthly')
+            ->when($groupId, fn($q) => $q->whereHas('student', fn($sq) => $sq->where('group_id', $groupId)))
+            ->get();
+
+        $stats = [
+            'total_expected' => (float) $allMonthly->sum('amount'),
+            'total_paid'     => (float) $allMonthly->where('status', 'paid')->sum('amount'),
+            'remaining'      => (float) $allMonthly->whereIn('status', ['unpaid', 'pending'])->sum('amount'),
+            'paid_count'     => $allMonthly->where('status', 'paid')->count(),
+            'unpaid_count'   => $allMonthly->where('status', 'unpaid')->count(),
+            'overdue_count'  => $allMonthly->where('status', 'unpaid')
+                ->filter(fn($p) => $p->is_overdue)->count(),
         ];
 
-        return view('admin.payments', compact('payments', 'paymentStats', 'currentMonth'));
+        return response()->json(['success' => true, 'payments' => $payments, 'stats' => $stats]);
+    }
+
+    private function formatPayment(Payment $payment): array
+    {
+        return [
+            'id'             => $payment->id,
+            'student_id'     => $payment->student_id,
+            'student_name'   => $payment->student?->user?->name ?? 'غير محدد',
+            'parent_name'    => $payment->student?->admission?->parent_name ?? '',
+            'phone'          => $payment->student?->admission?->father_phone
+                ?? $payment->student?->admission?->phone ?? '',
+            'group_id'       => $payment->student?->group_id,
+            'amount'         => $payment->amount,
+            'month'          => $payment->month,
+            'type'           => $payment->type ?? 'monthly',
+            'status'         => $payment->status,
+            'due_date'       => $payment->due_date?->format('Y-m-d'),
+            'paid_date'      => $payment->paid_date?->format('Y-m-d'),
+            'payment_method' => $payment->payment_method,
+            'account_name'   => $payment->account_name,
+            'notes'          => $payment->notes,
+            'is_overdue'     => $payment->is_overdue,
+        ];
+    }
+
+    public function recordPayment(Request $request, Payment $payment)
+    {
+        if ($payment->status === 'paid') {
+            return response()->json(['success' => false, 'message' => 'هذه الدفعة مسجلة مدفوعة مسبقاً'], 400);
+        }
+
+        $request->validate([
+            'payment_method' => 'required|in:cash,bank_transfer,check',
+            'account_name'   => 'required|string|max:255',
+            'paid_date'      => 'nullable|date',
+            'notes'          => 'nullable|string|max:500',
+        ], [
+            'payment_method.required' => 'يرجى اختيار طريقة الدفع',
+            'account_name.required'   => 'يرجى إدخال اسم الحساب (من دفع المبلغ)',
+        ]);
+
+        $payment->update([
+            'status'         => 'paid',
+            'payment_method' => $request->payment_method,
+            'account_name'   => $request->account_name,
+            'paid_date'      => $request->paid_date ?? today()->toDateString(),
+            'notes'          => $request->notes,
+        ]);
+
+        $payment->load(['student.user', 'student.parent']);
+        NotificationService::notifyPaymentReceived($payment);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تسجيل الدفعة بنجاح وإرسال إشعار لولي الأمر',
+            'payment' => $this->formatPayment($payment->fresh()->load(['student.user', 'student.admission'])),
+        ]);
+    }
+
+    public function updatePaymentData(Request $request, Payment $payment)
+    {
+        $request->validate([
+            'amount'   => 'nullable|numeric|min:0',
+            'due_date' => 'nullable|date',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+
+        $data = [];
+        if ($request->filled('amount'))   $data['amount']   = $request->amount;
+        if ($request->filled('due_date')) $data['due_date'] = $request->due_date;
+        if ($request->has('notes'))       $data['notes']    = $request->notes;
+
+        if (!empty($data)) {
+            $payment->update($data);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث بيانات الدفعة بنجاح',
+            'payment' => $this->formatPayment($payment->fresh()->load(['student.user', 'student.admission'])),
+        ]);
+    }
+
+    public function destroyPayment(Payment $payment)
+    {
+        if ($payment->status === 'paid') {
+            return response()->json(['success' => false, 'message' => 'لا يمكن حذف دفعة مسجلة كمدفوعة'], 400);
+        }
+
+        $payment->delete();
+
+        return response()->json(['success' => true, 'message' => 'تم حذف الدفعة بنجاح']);
+    }
+
+    public function addCustomPayment(Request $request)
+    {
+        $request->validate([
+            'student_id'     => 'required|exists:students,id',
+            'amount'         => 'required|numeric|min:0.01',
+            'type'           => 'required|in:monthly,admission_fee,educational_bundle',
+            'month'          => ['required', 'string', 'regex:/^\d{4}-\d{2}$/'],
+            'due_date'       => 'nullable|date',
+            'status'         => 'required|in:paid,unpaid,pending',
+            'payment_method' => 'nullable|in:cash,bank_transfer,check',
+            'account_name'   => 'nullable|string|max:255',
+            'notes'          => 'nullable|string|max:500',
+        ], [
+            'student_id.required' => 'يرجى اختيار طالب',
+            'amount.required'     => 'يرجى إدخال المبلغ',
+            'amount.min'          => 'يجب أن يكون المبلغ أكبر من صفر',
+            'month.required'      => 'يرجى تحديد الشهر',
+        ]);
+
+        $exists = Payment::where('student_id', $request->student_id)
+            ->where('month', $request->month)
+            ->where('type', $request->type)
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يوجد دفعة من نفس النوع لهذا الطالب في هذا الشهر',
+            ], 400);
+        }
+
+        $data = [
+            'student_id' => $request->student_id,
+            'amount'     => $request->amount,
+            'type'       => $request->type,
+            'month'      => $request->month,
+            'due_date'   => $request->due_date,
+            'status'     => $request->status,
+            'notes'      => $request->notes,
+        ];
+
+        if ($request->status === 'paid') {
+            $data['payment_method'] = $request->payment_method;
+            $data['account_name']   = $request->account_name;
+            $data['paid_date']      = today()->toDateString();
+        }
+
+        $payment = Payment::create($data);
+        $payment->load(['student.user', 'student.admission', 'student.parent']);
+
+        if ($request->status === 'paid') {
+            NotificationService::notifyPaymentReceived($payment);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إضافة الدفعة بنجاح',
+            'payment' => $this->formatPayment($payment),
+        ], 201);
+    }
+
+    public function searchStudentsForPayment(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+
+        if (mb_strlen($q) < 4) {
+            return response()->json(['success' => true, 'students' => []]);
+        }
+
+        $students = Student::with(['user', 'admission'])
+            ->whereHas('user', fn($query) => $query
+                ->where('name', 'LIKE', "%{$q}%")
+                ->orWhere('national_id', 'LIKE', "%{$q}%")
+            )
+            ->limit(10)
+            ->get()
+            ->map(fn($s) => [
+                'id'          => $s->id,
+                'name'        => $s->user?->name ?? 'غير محدد',
+                'national_id' => $s->user?->national_id ?? '',
+                'group_id'    => $s->group_id,
+                'monthly_fee' => $s->admission?->monthly_fee ?? 0,
+            ]);
+
+        return response()->json(['success' => true, 'students' => $students]);
+    }
+
+    public function getGroupsForPayments()
+    {
+        $groups = Group::select('id', 'name')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return response()->json(['success' => true, 'groups' => $groups]);
+    }
+
+    public function getPaymentHistory(Request $request)
+    {
+        $studentId = $request->get('student_id');
+        $monthFrom = $request->get('month_from');
+        $monthTo   = $request->get('month_to');
+        $status    = $request->get('status', 'all');
+        $type      = $request->get('type', 'all');
+
+        $payments = Payment::with(['student.user', 'student.admission'])
+            ->when($studentId, fn($q) => $q->where('student_id', $studentId))
+            ->when($monthFrom, fn($q) => $q->where('month', '>=', $monthFrom))
+            ->when($monthTo,   fn($q) => $q->where('month', '<=', $monthTo))
+            ->when($status && $status !== 'all', fn($q) => $q->where('status', $status))
+            ->when($type   && $type   !== 'all', fn($q) => $q->where('type', $type))
+            ->orderBy('month', 'desc')
+            ->orderBy('id', 'desc')
+            ->limit(500)
+            ->get();
+
+        $mapped = $payments->map(fn($p) => $this->formatPayment($p));
+
+        $stats = [
+            'total_count'   => $payments->count(),
+            'total_amount'  => (float) $payments->sum('amount'),
+            'paid_amount'   => (float) $payments->where('status', 'paid')->sum('amount'),
+            'unpaid_amount' => (float) $payments->whereIn('status', ['unpaid', 'pending'])->sum('amount'),
+            'paid_count'    => $payments->where('status', 'paid')->count(),
+            'unpaid_count'  => $payments->whereIn('status', ['unpaid', 'pending'])->count(),
+        ];
+
+        return response()->json(['success' => true, 'payments' => $mapped, 'stats' => $stats]);
+    }
+
+    public function exportPayments(Request $request)
+    {
+        $studentId = $request->get('student_id');
+        $monthFrom = $request->get('month_from');
+        $monthTo   = $request->get('month_to');
+        $status    = $request->get('status', 'all');
+        $type      = $request->get('type', 'all');
+
+        $payments = Payment::with(['student.user', 'student.admission'])
+            ->when($studentId, fn($q) => $q->where('student_id', $studentId))
+            ->when($monthFrom, fn($q) => $q->where('month', '>=', $monthFrom))
+            ->when($monthTo,   fn($q) => $q->where('month', '<=', $monthTo))
+            ->when($status && $status !== 'all', fn($q) => $q->where('status', $status))
+            ->when($type   && $type   !== 'all', fn($q) => $q->where('type', $type))
+            ->orderBy('month', 'desc')
+            ->get();
+
+        $filename = 'payments_' . now()->format('Y-m-d') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($payments) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM for Excel Arabic
+
+            fputcsv($handle, ['الطالب', 'ولي الأمر', 'الهاتف', 'الشهر', 'النوع', 'المبلغ (ش.ج)', 'الحالة', 'تاريخ الاستحقاق', 'تاريخ الدفع', 'طريقة الدفع', 'اسم الحساب', 'ملاحظات']);
+
+            $typeMap   = ['monthly' => 'شهري', 'admission_fee' => 'رسوم انتساب', 'educational_bundle' => 'حزمة تعليمية'];
+            $statusMap = ['paid' => 'مدفوع', 'unpaid' => 'غير مدفوع', 'pending' => 'في الانتظار'];
+
+            foreach ($payments as $p) {
+                fputcsv($handle, [
+                    $p->student?->user?->name ?? '',
+                    $p->student?->admission?->parent_name ?? '',
+                    $p->student?->admission?->father_phone ?? $p->student?->admission?->phone ?? '',
+                    $p->month,
+                    $typeMap[$p->type ?? 'monthly'] ?? ($p->type ?? ''),
+                    number_format((float) $p->amount, 2),
+                    $statusMap[$p->status] ?? ($p->status ?? ''),
+                    $p->due_date?->format('Y-m-d') ?? '',
+                    $p->paid_date?->format('Y-m-d') ?? '',
+                    $p->payment_method ?? '',
+                    $p->account_name ?? '',
+                    $p->notes ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function sendPaymentReminder(Payment $payment, Request $request)
+    {
+        if ($payment->status === 'paid') {
+            return response()->json(['success' => false, 'message' => 'هذه الدفعة مدفوعة بالفعل'], 400);
+        }
+
+        $graceDays = (int) $request->input('grace_days', 0);
+        $graceDays = max(0, min(4, $graceDays));
+
+        $payment->load(['student.user', 'student.parent']);
+        $parent      = $payment->student?->parent;
+        $studentName = $payment->student?->user?->name ?? 'الطالب';
+
+        if (! $parent) {
+            return response()->json(['success' => false, 'message' => 'لا يوجد ولي أمر مرتبط بهذا الطالب'], 400);
+        }
+
+        $graceText = match ($graceDays) {
+            0       => 'اليوم',
+            1       => 'خلال يوم واحد',
+            2       => 'خلال يومين',
+            default => "خلال {$graceDays} أيام",
+        };
+
+        $parent->notify(new \App\Notifications\AcademyNotification(
+            "تذكير: دفعة {$payment->formatted_month} للطالب {$studentName} بمبلغ {$payment->amount} ش.ج، المطلوب السداد {$graceText}",
+            route('parent.payments'),
+            'warning'
+        ));
+
+        $payment->update([
+            'reminder_grace_days'   => $graceDays,
+            'last_reminder_sent_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "تم إرسال تذكير لولي أمر {$studentName}",
+        ]);
+    }
+
+    public function sendFilteredReminders(Request $request)
+    {
+        $month   = $request->get('month', now()->format('Y-m'));
+        $groupId = $request->get('group_id');
+
+        $payments = Payment::with(['student.user', 'student.parent'])
+            ->where('month', $month)
+            ->where('status', 'unpaid')
+            ->when($groupId, fn($q) => $q->whereHas('student', fn($sq) => $sq->where('group_id', $groupId)))
+            ->get();
+
+        $sent = 0;
+        foreach ($payments as $payment) {
+            $parent      = $payment->student?->parent;
+            $studentName = $payment->student?->user?->name ?? 'الطالب';
+
+            if ($parent) {
+                $parent->notify(new \App\Notifications\AcademyNotification(
+                    "تذكير: دفعة {$payment->formatted_month} للطالب {$studentName} بمبلغ {$payment->amount} ش.ج لم تُسدَّد بعد",
+                    route('parent.payments'),
+                    'warning'
+                ));
+                $sent++;
+            }
+        }
+
+        NotificationService::notifyRole(
+            'admin',
+            "تم إرسال {$sent} تذكير دفع لشهر {$month}",
+            route('admin.payments'),
+            'info'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "تم إرسال {$sent} تذكير من أصل {$payments->count()} دفعة غير مسددة",
+            'sent'    => $sent,
+            'total'   => $payments->count(),
+        ]);
+    }
+
+    public function getFinancialReport()
+    {
+        $monthNames = [
+            '01' => 'يناير', '02' => 'فبراير', '03' => 'مارس',    '04' => 'أبريل',
+            '05' => 'مايو',  '06' => 'يونيو',  '07' => 'يوليو',   '08' => 'أغسطس',
+            '09' => 'سبتمبر','10' => 'أكتوبر', '11' => 'نوفمبر',  '12' => 'ديسمبر',
+        ];
+
+        $todayRevenue = (float) Payment::paid()->whereDate('paid_date', today())->sum('amount');
+
+        $monthRevenue = (float) Payment::paid()
+            ->whereYear('paid_date', now()->year)
+            ->whereMonth('paid_date', now()->month)
+            ->sum('amount');
+
+        $unpaidThisMonth = (float) Payment::unpaid()->where('month', now()->format('Y-m'))->sum('amount');
+
+        $overdueAmount = (float) Payment::unpaid()->where('month', '<', now()->format('Y-m'))->sum('amount');
+        $overdueCount  = Payment::unpaid()->where('month', '<', now()->format('Y-m'))->count();
+
+        $monthlyTrend = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $date           = now()->subMonths($i);
+            $monthlyTrend[] = [
+                'month'  => $date->format('Y-m'),
+                'label'  => ($monthNames[$date->format('m')] ?? '') . ' ' . $date->format('Y'),
+                'amount' => (float) Payment::paid()
+                    ->whereYear('paid_date', $date->year)
+                    ->whereMonth('paid_date', $date->month)
+                    ->sum('amount'),
+            ];
+        }
+
+        $typeLabels = ['monthly' => 'شهري', 'admission_fee' => 'رسوم انتساب', 'educational_bundle' => 'حزمة تعليمية'];
+        $byType = Payment::paid()
+            ->whereYear('paid_date', now()->year)
+            ->whereMonth('paid_date', now()->month)
+            ->selectRaw('type, SUM(amount) as total, COUNT(*) as cnt')
+            ->groupBy('type')
+            ->get()
+            ->map(fn($row) => [
+                'type'  => $row->type,
+                'label' => $typeLabels[$row->type] ?? $row->type,
+                'total' => (float) $row->total,
+                'count' => $row->cnt,
+            ])->values();
+
+        $topUnpaid = Payment::with(['student.user'])
+            ->unpaid()
+            ->selectRaw('student_id, SUM(amount) as total_unpaid, COUNT(*) as months_count')
+            ->groupBy('student_id')
+            ->orderByDesc('total_unpaid')
+            ->limit(10)
+            ->get()
+            ->map(fn($p) => [
+                'student_name' => $p->student?->user?->name ?? 'غير محدد',
+                'total_unpaid' => (float) $p->total_unpaid,
+                'months_count' => $p->months_count,
+            ])->values();
+
+        return response()->json([
+            'success'          => true,
+            'today_revenue'    => $todayRevenue,
+            'month_revenue'    => $monthRevenue,
+            'unpaid_this_month'=> $unpaidThisMonth,
+            'overdue_amount'   => $overdueAmount,
+            'overdue_count'    => $overdueCount,
+            'monthly_trend'    => $monthlyTrend,
+            'by_type'          => $byType,
+            'top_unpaid'       => $topUnpaid,
+        ]);
     }
 
     public function markPaymentAsPaid(Payment $payment)
@@ -1890,6 +2514,71 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ في إنشاء المحاضرة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function updateLecture(Request $request, Lecture $lecture)
+    {
+        $validator = Validator::make($request->all(), [
+            'title'       => 'required|string|max:255',
+            'date'        => 'required|date',
+            'start_time'  => 'required|date_format:H:i',
+            'end_time'    => 'required|date_format:H:i|after:start_time',
+            'teacher_id'  => 'required|exists:teachers,id',
+            'group_id'    => 'required|exists:groups,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'type'        => 'in:lecture,exam,review,activity',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات غير صحيحة',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $conflicts = $this->checkTimeConflicts(
+                $request->teacher_id,
+                $request->date,
+                $request->start_time,
+                $request->end_time,
+                $lecture->id
+            );
+
+            if ($conflicts->count() > 0) {
+                return response()->json([
+                    'success'   => false,
+                    'message'   => 'يوجد تضارب في الأوقات مع محاضرات أخرى للمدرس',
+                    'conflicts' => $conflicts,
+                ], 400);
+            }
+
+            $lecture->update([
+                'title'       => $request->title,
+                'date'        => $request->date,
+                'start_time'  => $request->start_time,
+                'end_time'    => $request->end_time,
+                'teacher_id'  => $request->teacher_id,
+                'group_id'    => $request->group_id,
+                'subject_id'  => $request->subject_id,
+                'type'        => $request->type ?? $lecture->type,
+                'description' => $request->description,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديث المحاضرة بنجاح',
+                'lecture' => $lecture->fresh()->load(['teacher.user', 'group', 'subject']),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في تحديث المحاضرة: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -2312,6 +3001,92 @@ class AdminController extends Controller
         })->count();
 
         return back()->with('success', "تم إرسال تنبيهات نسبة الحضور المنخفض لـ {$lowAttendanceCount} ولي أمر");
+    }
+
+    public function getStudentEditData(Student $student)
+    {
+        $student->load(['user', 'admission']);
+
+        $admission = $student->admission;
+
+        return response()->json([
+            'success' => true,
+            'student' => [
+                'id'                => $student->id,
+                'name'              => $student->user?->name ?? '',
+                'email'             => $student->user?->email ?? '',
+                'national_id'       => $student->user?->national_id ?? $admission?->student_id ?? '',
+                'birth_date'        => $student->birth_date?->format('Y-m-d') ?? '',
+                'has_admission'     => ! is_null($admission),
+                'admission_id'      => $admission?->id,
+                'parent_name'       => $admission?->parent_name ?? '',
+                'parent_national_id'=> $admission?->parent_id ?? '',
+                'parent_job'        => $admission?->parent_job ?? '',
+                'father_phone'      => $admission?->father_phone ?? '',
+                'mother_phone'      => $admission?->mother_phone ?? '',
+                'address'           => $admission?->address ?? '',
+                'grade'             => $admission?->grade ?? '',
+                'academic_level'    => $admission?->academic_level ?? '',
+                'monthly_fee'       => $admission?->monthly_fee ?? '',
+                'study_start_date'  => $admission?->study_start_date?->format('Y-m-d') ?? '',
+            ],
+        ]);
+    }
+
+    public function updateStudent(Request $request, Student $student)
+    {
+        $request->validate([
+            'name'               => 'required|string|max:255',
+            'national_id'        => 'nullable|string|max:20',
+            'birth_date'         => 'nullable|date',
+            'parent_name'        => 'nullable|string|max:255',
+            'parent_national_id' => 'nullable|string|max:20',
+            'parent_job'         => 'nullable|string|max:255',
+            'father_phone'       => 'nullable|string|max:20',
+            'mother_phone'       => 'nullable|string|max:20',
+            'address'            => 'nullable|string|max:500',
+            'grade'              => 'nullable|string|max:100',
+            'academic_level'     => 'nullable|string|max:100',
+            'monthly_fee'        => 'nullable|numeric|min:0',
+            'study_start_date'   => 'nullable|date',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // تحديث بيانات المستخدم
+            $student->user?->update([
+                'name'        => $request->name,
+                'national_id' => $request->national_id,
+            ]);
+
+            // تحديث بيانات الطالب
+            $student->update([
+                'birth_date' => $request->birth_date ?: null,
+            ]);
+
+            // تحديث طلب الانتساب إن وُجد
+            if ($student->admission) {
+                $student->admission->update([
+                    'student_name'     => $request->name,
+                    'parent_name'      => $request->parent_name,
+                    'parent_id'        => $request->parent_national_id,
+                    'parent_job'       => $request->parent_job,
+                    'father_phone'     => $request->father_phone,
+                    'mother_phone'     => $request->mother_phone,
+                    'address'          => $request->address,
+                    'grade'            => $request->grade,
+                    'academic_level'   => $request->academic_level,
+                    'monthly_fee'      => $request->monthly_fee ?: $student->admission->monthly_fee,
+                    'study_start_date' => $request->study_start_date ?: $student->admission->study_start_date,
+                ]);
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'تم تحديث بيانات الطالب بنجاح']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'حدث خطأ: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

@@ -72,7 +72,12 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
         addSubjectToGroup: '{{ url("/admin/groups") }}',
         updateGroupSubject: '{{ url("/admin/groups") }}',
         removeSubjectFromGroup: '{{ url("/admin/groups") }}',
-        copySubjectsBetweenGroups: '{{ url("/admin/groups") }}'
+        copySubjectsBetweenGroups: '{{ url("/admin/groups") }}',
+
+        // routes الجدول الزمني وتعديل الطالب
+        lecturesData: '{{ url("/admin/lectures/data") }}',
+        studentEditData: '{{ url("/admin/students") }}',
+        studentUpdate: '{{ url("/admin/students") }}'
     };
 </script>
 
@@ -362,7 +367,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
             <!-- Modal إدارة مواد المجموعة -->
             <div x-show="showSubjectsModal" x-cloak
-                class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
                 @click.self="showSubjectsModal = false">
                 <div class="w-full max-w-5xl max-h-screen mx-4 overflow-y-auto bg-white shadow-2xl rounded-2xl fade-in"
                     @click.stop>
@@ -540,7 +545,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
             <!-- Modal إضافة مادة للمجموعة -->
             <div x-show="showAddSubjectModal" x-cloak
-                class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
                 @click.self="showAddSubjectModal = false">
                 <div class="w-full max-w-md mx-4 bg-white shadow-2xl rounded-2xl fade-in" @click.stop>
                     <div class="p-6 border-b border-gray-200">
@@ -632,7 +637,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
             <!-- Modal تحرير مادة المجموعة -->
             <div x-show="showEditSubjectModal" x-cloak
-                class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
                 @click.self="showEditSubjectModal = false">
                 <div class="w-full max-w-md mx-4 bg-white shadow-2xl rounded-2xl fade-in" @click.stop>
                     <div class="p-6 border-b border-gray-200">
@@ -695,7 +700,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
             <!-- Modal نسخ المواد من مجموعة أخرى -->
             <div x-show="showCopySubjectsModal" x-cloak
-                class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
                 @click.self="showCopySubjectsModal = false">
                 <div class="w-full max-w-lg mx-4 bg-white shadow-2xl rounded-2xl fade-in" @click.stop>
                     <div class="p-6 border-b border-gray-200">
@@ -849,7 +854,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
     <!-- Modal إنشاء مجموعة جديدة -->
     <div x-show="showCreateModal" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         @click.self="showCreateModal = false">
         <div class="w-full max-w-2xl max-h-screen mx-4 overflow-y-auto bg-white shadow-2xl rounded-2xl fade-in"
             @click.stop>
@@ -945,7 +950,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
     <!-- Modal تعديل المجموعة -->
     <div x-show="showEditModal" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         @click.self="showEditModal = false">
         <div class="w-full max-w-2xl max-h-screen mx-4 overflow-y-auto bg-white shadow-2xl rounded-2xl fade-in"
             @click.stop>
@@ -1031,7 +1036,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
     <!-- Modal عرض الطلاب -->
     <div x-show="showStudentsModal" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         @click.self="showStudentsModal = false">
         <div class="w-full max-w-6xl max-h-screen mx-4 overflow-y-auto bg-white shadow-2xl rounded-2xl fade-in"
             @click.stop>
@@ -1173,7 +1178,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
     <!-- Modal إضافة طالب للمجموعة -->
     <div x-show="showAddStudentModal" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         @click.self="showAddStudentModal = false">
         <div class="w-full max-w-md mx-4 bg-white shadow-2xl rounded-2xl fade-in" @click.stop>
             <div class="p-6 border-b border-gray-200">
@@ -1258,7 +1263,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
     <!-- Modal نقل الطالب -->
     <div x-show="showMoveStudentModal" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         @click.self="showMoveStudentModal = false">
         <div class="w-full max-w-md mx-4 bg-white shadow-2xl rounded-2xl fade-in" @click.stop>
             <div class="p-6 border-b border-gray-200">
@@ -1297,6 +1302,254 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
                     <button type="submit" :disabled="movingStudent"
                         class="px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
                         <span x-text="movingStudent ? 'جاري النقل...' : 'نقل الطالب'"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal الجدول الزمني الأسبوعي -->
+    <div x-show="showScheduleModal" x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        @click.self="showScheduleModal = false">
+        <div class="w-full max-w-6xl mx-4 bg-white shadow-2xl rounded-2xl fade-in flex flex-col"
+            style="max-height: 90vh;" @click.stop>
+
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200 shrink-0">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-800" x-text="`جدول ${scheduleGroup?.name}`"></h3>
+                        <p class="text-sm text-gray-500" x-text="scheduleGroup?.grade_level"></p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="prevWeek()" :disabled="loadingSchedule"
+                            class="p-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                            title="الأسبوع السابق">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <span class="text-sm font-medium text-gray-700 min-w-48 text-center"
+                            x-text="scheduleWeekStart ? (() => {
+                                const s = new Date(scheduleWeekStart + 'T00:00:00');
+                                const e = new Date(s); e.setDate(s.getDate()+6);
+                                return s.toLocaleDateString('ar-SA', {day:'numeric',month:'short'}) + ' — ' + e.toLocaleDateString('ar-SA', {day:'numeric',month:'short',year:'numeric'});
+                            })() : ''">
+                        </span>
+                        <button @click="nextWeek()" :disabled="loadingSchedule"
+                            class="p-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                            title="الأسبوع التالي">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button @click="showScheduleModal = false"
+                            class="p-2 text-gray-400 rounded-lg hover:text-gray-600 hover:bg-gray-100 mr-2">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div x-show="loadingSchedule" class="flex items-center justify-center p-12">
+                <div class="flex items-center gap-3">
+                    <div class="w-6 h-6 border-4 border-orange-500 rounded-full border-t-transparent animate-spin"></div>
+                    <span class="text-gray-600">جاري تحميل الجدول...</span>
+                </div>
+            </div>
+
+            <!-- Week grid -->
+            <div x-show="!loadingSchedule" class="overflow-auto flex-1 p-4">
+                <div class="grid grid-cols-7 gap-2" style="min-width: 700px;">
+                    <template x-for="day in scheduleWeekDays" :key="day.date">
+                        <div>
+                            <!-- Day header -->
+                            <div class="text-center pb-2 mb-2 border-b-2"
+                                :class="day.date === new Date().toISOString().split('T')[0] ? 'border-orange-400' : 'border-gray-200'">
+                                <div class="text-xs font-semibold text-gray-500" x-text="day.name"></div>
+                                <div class="text-xl font-bold mt-0.5"
+                                    :class="day.date === new Date().toISOString().split('T')[0] ? 'text-orange-500' : 'text-gray-800'"
+                                    x-text="day.day"></div>
+                                <div class="text-xs text-gray-400" x-text="day.month"></div>
+                            </div>
+
+                            <!-- Lectures -->
+                            <div class="space-y-2 min-h-20">
+                                <template x-for="lecture in day.lectures" :key="lecture.id">
+                                    <div :class="{
+                                        'bg-blue-50 border-blue-300': lecture.status === 'scheduled',
+                                        'bg-green-50 border-green-300': lecture.status === 'completed',
+                                        'bg-gray-50 border-gray-200 opacity-60': lecture.status === 'cancelled',
+                                        'bg-yellow-50 border-yellow-300': lecture.status === 'rescheduled'
+                                    }" class="border rounded-lg p-2 text-xs cursor-default">
+                                        <div class="font-semibold text-gray-800 truncate" x-text="lecture.title"></div>
+                                        <div class="text-gray-500 mt-0.5" x-text="`${lecture.start_time} - ${lecture.end_time}`"></div>
+                                        <div x-show="lecture.subject_name" class="text-gray-600 truncate mt-0.5" x-text="lecture.subject_name"></div>
+                                        <div class="text-gray-500 truncate" x-text="lecture.teacher_name"></div>
+                                        <div class="mt-1.5">
+                                            <span :class="{
+                                                'bg-blue-100 text-blue-700': lecture.status === 'scheduled',
+                                                'bg-green-100 text-green-700': lecture.status === 'completed',
+                                                'bg-gray-100 text-gray-600': lecture.status === 'cancelled',
+                                                'bg-yellow-100 text-yellow-700': lecture.status === 'rescheduled'
+                                            }" class="inline-block px-1.5 py-0.5 rounded text-xs font-medium"
+                                            x-text="{scheduled:'مجدولة',completed:'منتهية',cancelled:'ملغاة',rescheduled:'مؤجلة'}[lecture.status] || lecture.status">
+                                            </span>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div x-show="day.lectures.length === 0"
+                                    class="text-center text-gray-300 text-xs py-6">—</div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Empty week -->
+                <div x-show="scheduleLectures.length === 0" class="text-center py-10 text-gray-400">
+                    <i class="fas fa-calendar-times fa-2x mb-3"></i>
+                    <p class="text-sm">لا توجد محاضرات لهذا الأسبوع</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal تعديل بيانات الطالب -->
+    <div x-show="showEditStudentModal" x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        @click.self="showEditStudentModal = false">
+        <div class="w-full max-w-2xl mx-4 bg-white shadow-2xl rounded-2xl fade-in overflow-y-auto"
+            style="max-height: 90vh;" @click.stop>
+
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-800">تعديل بيانات الطالب</h3>
+                        <p class="text-sm text-gray-500" x-text="editingStudent?.name"></p>
+                    </div>
+                    <button @click="showEditStudentModal = false"
+                        class="p-2 text-gray-400 rounded-lg hover:text-gray-600 hover:bg-gray-100">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div x-show="loadingStudentEdit" class="flex items-center justify-center p-12">
+                <div class="flex items-center gap-3">
+                    <div class="w-6 h-6 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+                    <span class="text-gray-600">جاري تحميل البيانات...</span>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form x-show="!loadingStudentEdit" @submit.prevent="saveStudentEdit()" class="p-6 space-y-6">
+
+                <!-- بيانات الطالب -->
+                <div>
+                    <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-200">
+                        <i class="fas fa-user-graduate text-blue-500"></i>
+                        بيانات الطالب
+                    </h4>
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div class="md:col-span-2">
+                            <label class="block mb-1 text-sm font-medium text-gray-700">اسم الطالب <span class="text-red-500">*</span></label>
+                            <input type="text" x-model="editStudentForm.name" required
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">رقم الهوية</label>
+                            <input type="text" x-model="editStudentForm.national_id"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="رقم الهوية الوطنية">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">تاريخ الميلاد</label>
+                            <input type="date" x-model="editStudentForm.birth_date"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- بيانات ولي الأمر -->
+                <div>
+                    <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-200">
+                        <i class="fas fa-user-tie text-green-500"></i>
+                        بيانات ولي الأمر
+                    </h4>
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">اسم ولي الأمر</label>
+                            <input type="text" x-model="editStudentForm.parent_name"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">رقم هوية ولي الأمر</label>
+                            <input type="text" x-model="editStudentForm.parent_national_id"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">مهنة ولي الأمر</label>
+                            <input type="text" x-model="editStudentForm.parent_job"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">هاتف الأب</label>
+                            <input type="tel" x-model="editStudentForm.father_phone"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">هاتف الأم</label>
+                            <input type="tel" x-model="editStudentForm.mother_phone"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block mb-1 text-sm font-medium text-gray-700">العنوان</label>
+                            <input type="text" x-model="editStudentForm.address"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- البيانات الأكاديمية -->
+                <div>
+                    <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-200">
+                        <i class="fas fa-graduation-cap text-purple-500"></i>
+                        البيانات الأكاديمية
+                    </h4>
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">الصف الدراسي</label>
+                            <input type="text" x-model="editStudentForm.grade"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">المرحلة التعليمية</label>
+                            <input type="text" x-model="editStudentForm.academic_level"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">الرسوم الشهرية</label>
+                            <input type="number" x-model="editStudentForm.monthly_fee" min="0" step="0.01"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block mb-1 text-sm font-medium text-gray-700">تاريخ بدء الدراسة</label>
+                            <input type="date" x-model="editStudentForm.study_start_date"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- أزرار الإجراءات -->
+                <div class="flex justify-end gap-4 pt-4 border-t border-gray-200">
+                    <button type="button" @click="showEditStudentModal = false"
+                        class="px-6 py-2.5 font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        إلغاء
+                    </button>
+                    <button type="submit" :disabled="savingStudent"
+                        class="flex items-center gap-2 px-6 py-2.5 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-save"></i>
+                        <span x-text="savingStudent ? 'جاري الحفظ...' : 'حفظ التعديلات'"></span>
                     </button>
                 </div>
             </form>
@@ -1389,6 +1642,24 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
     showEditSubjectModal: false,
     showCopySubjectsModal: false,
 
+    // Modals الجدول الزمني وتعديل الطالب
+    showScheduleModal: false,
+    scheduleGroup: null,
+    scheduleLectures: [],
+    scheduleWeekStart: '',
+    loadingSchedule: false,
+
+    showEditStudentModal: false,
+    editingStudent: null,
+    editStudentForm: {
+        name: '', national_id: '', birth_date: '',
+        parent_name: '', parent_national_id: '', parent_job: '',
+        father_phone: '', mother_phone: '', address: '',
+        grade: '', academic_level: '', monthly_fee: '', study_start_date: ''
+    },
+    savingStudent: false,
+    loadingStudentEdit: false,
+
     // بيانات النماذج
     newGroup: {
     name: '',
@@ -1461,6 +1732,26 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 
     return matchesSearch && matchesStatus;
     });
+    },
+
+    get scheduleWeekDays() {
+    if (!this.scheduleWeekStart) return [];
+    const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+    const d = new Date(this.scheduleWeekStart + 'T00:00:00');
+    d.setDate(d.getDate() + i);
+    const y = d.getFullYear(), mo = String(d.getMonth()+1).padStart(2,'0'), dy = String(d.getDate()).padStart(2,'0');
+    const dateStr = `${y}-${mo}-${dy}`;
+    days.push({
+    name: dayNames[d.getDay()],
+    date: dateStr,
+    day: d.getDate(),
+    month: d.toLocaleDateString('ar-SA', { month: 'short' }),
+    lectures: this.scheduleLectures.filter(l => l.date === dateStr)
+    });
+    }
+    return days;
     },
 
     // تحميل البيانات
@@ -2155,13 +2446,138 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
     this.sourceGroupSubjects = [];
     },
 
-    // وظائف أخرى
-    editStudent(student) {
-    this.showAlertMessage('success', `سيتم فتح نموذج تعديل ${student.name}`);
+    // الجدول الزمني الأسبوعي
+    async viewSchedule(group) {
+    this.scheduleGroup = group;
+    const today = new Date();
+    const diff = today.getDay();
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() - diff);
+    const y = sunday.getFullYear(), mo = String(sunday.getMonth()+1).padStart(2,'0'), dy = String(sunday.getDate()).padStart(2,'0');
+    this.scheduleWeekStart = `${y}-${mo}-${dy}`;
+    this.showScheduleModal = true;
+    await this.loadScheduleLectures();
     },
 
-    viewSchedule(group) {
-    this.showAlertMessage('success', `سيتم عرض جدول ${group.name}`);
+    async loadScheduleLectures() {
+    if (!this.scheduleGroup) return;
+    this.loadingSchedule = true;
+    try {
+    const start = new Date(this.scheduleWeekStart + 'T00:00:00');
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const ey = end.getFullYear(), em = String(end.getMonth()+1).padStart(2,'0'), ed = String(end.getDate()).padStart(2,'0');
+    const url = `${window.routes.lecturesData}?group_id=${this.scheduleGroup.id}&date_from=${this.scheduleWeekStart}&date_to=${ey}-${em}-${ed}`;
+    const response = await fetch(url, {
+    headers: {
+    'X-Requested-With': 'XMLHttpRequest',
+    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    }
+    });
+    const data = await response.json();
+    if (data.success) {
+    this.scheduleLectures = data.lectures;
+    } else {
+    throw new Error(data.message || 'فشل في تحميل المحاضرات');
+    }
+    } catch (error) {
+    console.error('Error loading schedule:', error);
+    this.showAlertMessage('error', 'حدث خطأ في تحميل الجدول الزمني');
+    } finally {
+    this.loadingSchedule = false;
+    }
+    },
+
+    prevWeek() {
+    const d = new Date(this.scheduleWeekStart + 'T00:00:00');
+    d.setDate(d.getDate() - 7);
+    const y = d.getFullYear(), mo = String(d.getMonth()+1).padStart(2,'0'), dy = String(d.getDate()).padStart(2,'0');
+    this.scheduleWeekStart = `${y}-${mo}-${dy}`;
+    this.loadScheduleLectures();
+    },
+
+    nextWeek() {
+    const d = new Date(this.scheduleWeekStart + 'T00:00:00');
+    d.setDate(d.getDate() + 7);
+    const y = d.getFullYear(), mo = String(d.getMonth()+1).padStart(2,'0'), dy = String(d.getDate()).padStart(2,'0');
+    this.scheduleWeekStart = `${y}-${mo}-${dy}`;
+    this.loadScheduleLectures();
+    },
+
+    // تعديل بيانات الطالب
+    async editStudent(student) {
+    this.editingStudent = student;
+    this.editStudentForm = { name: '', national_id: '', birth_date: '', parent_name: '', parent_national_id: '', parent_job: '', father_phone: '', mother_phone: '', address: '', grade: '', academic_level: '', monthly_fee: '', study_start_date: '' };
+    this.loadingStudentEdit = true;
+    this.showEditStudentModal = true;
+    try {
+    const response = await fetch(`${window.routes.studentEditData}/${student.id}/edit-data`, {
+    headers: {
+    'X-Requested-With': 'XMLHttpRequest',
+    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    }
+    });
+    const data = await response.json();
+    if (data.success) {
+    const s = data.student;
+    this.editStudentForm = {
+    name: s.name || '',
+    national_id: s.national_id || '',
+    birth_date: s.birth_date || '',
+    parent_name: s.parent_name || '',
+    parent_national_id: s.parent_national_id || '',
+    parent_job: s.parent_job || '',
+    father_phone: s.father_phone || '',
+    mother_phone: s.mother_phone || '',
+    address: s.address || '',
+    grade: s.grade || '',
+    academic_level: s.academic_level || '',
+    monthly_fee: s.monthly_fee || '',
+    study_start_date: s.study_start_date || '',
+    };
+    } else {
+    throw new Error(data.message || 'فشل في تحميل بيانات الطالب');
+    }
+    } catch (error) {
+    console.error('Error loading student edit data:', error);
+    this.showAlertMessage('error', 'حدث خطأ في تحميل بيانات الطالب');
+    this.showEditStudentModal = false;
+    } finally {
+    this.loadingStudentEdit = false;
+    }
+    },
+
+    async saveStudentEdit() {
+    if (!this.editStudentForm.name.trim()) {
+    this.showAlertMessage('error', 'اسم الطالب مطلوب');
+    return;
+    }
+    this.savingStudent = true;
+    try {
+    const response = await fetch(`${window.routes.studentUpdate}/${this.editingStudent.id}`, {
+    method: 'PUT',
+    headers: {
+    'Content-Type': 'application/json',
+    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+    'Accept': 'application/json'
+    },
+    body: JSON.stringify(this.editStudentForm)
+    });
+    const data = await response.json();
+    if (data.success) {
+    const idx = this.students.findIndex(s => s.id === this.editingStudent.id);
+    if (idx !== -1) this.students[idx].name = this.editStudentForm.name;
+    this.showEditStudentModal = false;
+    this.showAlertMessage('success', data.message);
+    } else {
+    throw new Error(data.message || 'فشل في تحديث بيانات الطالب');
+    }
+    } catch (error) {
+    console.error('Error saving student:', error);
+    this.showAlertMessage('error', error.message);
+    } finally {
+    this.savingStudent = false;
+    }
     },
 
     exportStudentsList() {

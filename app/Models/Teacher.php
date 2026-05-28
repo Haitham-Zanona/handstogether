@@ -5,7 +5,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Teacher extends Model
 {
-    protected $fillable = ['user_id', 'specialization'];
+    protected $fillable = [
+        'user_id', 'specialization', 'specializations', 'account_type', 'account_number',
+    ];
+
+    protected $casts = [
+        'specializations' => 'array',
+    ];
 
     public function user()
     {
@@ -17,6 +23,13 @@ class Teacher extends Model
         return $this->hasMany(Lecture::class);
     }
 
+    // Direct assignment via pivot (used for staff management)
+    public function assignedGroups()
+    {
+        return $this->belongsToMany(Group::class, 'teacher_group');
+    }
+
+    // Groups derived from lectures (legacy — kept for backward compat)
     public function groups()
     {
         return $this->hasManyThrough(Group::class, Lecture::class)->distinct();

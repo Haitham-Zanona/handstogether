@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\Group;
 use App\Models\Lecture;
 use App\Models\Student;
 use App\Models\Teacher;
@@ -18,18 +19,39 @@ class TeacherController extends Controller
             return redirect()->route('home')->with('error', 'حساب المدرس غير مكتمل');
         }
 
+        $groups         = $teacher->assignedGroups()->withCount('students')->get();
         $todayLectures  = $teacher->getTodayLectures();
         $weeklySchedule = $teacher->getWeeklySchedule();
-        $totalStudents  = $teacher->students()->count();
+        $totalStudents  = $groups->sum('students_count');
 
         $stats = [
             'today_lectures'  => $todayLectures->count(),
             'week_lectures'   => $weeklySchedule->count(),
             'total_students'  => $totalStudents,
-            'attendance_rate' => $this->getTeacherAttendanceRate($teacher->id),
+            'total_groups'    => $groups->count(),
         ];
 
-        return view('teacher.dashboard', compact('todayLectures', 'weeklySchedule', 'stats'));
+        return view('teacher.dashboard', compact('teacher', 'groups', 'todayLectures', 'weeklySchedule', 'stats'));
+    }
+
+    public function showGroup(Group $group)
+    {
+        $teacher = auth()->user()->teacher;
+
+        if (! $teacher->assignedGroups()->where('groups.id', $group->id)->exists()) {
+            abort(403, 'ليس لديك صلاحية لعرض هذه المجموعة');
+        }
+
+        $students = $group->students()->with('user')->orderBy('created_at')->get();
+
+        $upcomingLectures = $teacher->lectures()
+            ->where('group_id', $group->id)
+            ->where('date', '>=', today())
+            ->orderBy('date')->orderBy('start_time')
+            ->limit(5)
+            ->get();
+
+        return view('teacher.groups.show', compact('group', 'students', 'upcomingLectures', 'teacher'));
     }
 
     public function schedule()
@@ -50,17 +72,6 @@ class TeacherController extends Controller
             ->map(fn($lecture) => $lecture->toCalendarEvent());
 
         return view('teacher.schedule', compact('lectures', 'calendarEvents'));
-    }
-
-    public function students()
-    {
-        $teacher = auth()->user()->teacher;
-
-        $students = $teacher->students()
-            ->with(['user', 'parent', 'group'])
-            ->paginate(20);
-
-        return view('teacher.students', compact('students'));
     }
 
     public function attendance(Request $request)
@@ -212,33 +223,294 @@ class TeacherController extends Controller
 
     public function reports()
     {
-        $teacher      = auth()->user()->teacher;
-        $currentMonth = now()->format('Y-m');
+        return view('teacher.reports');
+    }
 
-        $lecturesThisMonth = $teacher->lectures()
-            ->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$currentMonth])
-            ->count();
+    public function getReportsData(Request $request)
+    {
+        $teacher = auth()->user()->teacher;
+        $month   = $request->get('month', now()->format('Y-m'));
 
-        $attendanceRate = $this->getTeacherAttendanceRate($teacher->id, $currentMonth);
-
-        $groupsStats = $teacher->lectures()
+        // ── إجمالي المحاضرات ──
+        $lectures = $teacher->lectures()
             ->with('group')
-            ->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$currentMonth])
-            ->get()
-            ->groupBy('group.name')
-            ->map(function ($lectures) {
-                $group = $lectures->first()->group;
-                return [
-                    'lectures_count'   => $lectures->count(),
-                    'students_count'   => $group->students()->count(),
-                    'total_attendance' => Attendance::whereIn('lecture_id', $lectures->pluck('id'))->count(),
-                    'present_count'    => Attendance::present()->whereIn('lecture_id', $lectures->pluck('id'))->count(),
-                ];
-            });
+            ->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month])
+            ->get();
 
-        return view('teacher.reports', compact(
-            'lecturesThisMonth', 'attendanceRate', 'groupsStats', 'currentMonth'
-        ));
+        $lectureIds = $lectures->pluck('id');
+
+        $totalLectures    = $lectures->count();
+        $completedCount   = $lectures->where('status', 'completed')->count();
+        $cancelledCount   = $lectures->where('status', 'cancelled')->count();
+        $scheduledCount   = $lectures->where('status', 'scheduled')->count();
+
+        // ── نسبة الحضور العامة ──
+        $totalExpected = Attendance::whereIn('lecture_id', $lectureIds)->count();
+        $presentCount  = Attendance::whereIn('lecture_id', $lectureIds)->where('status', 'present')->count();
+        $overallRate   = $totalExpected > 0 ? round(($presentCount / $totalExpected) * 100, 1) : 0;
+
+        // ── إحصائيات كل مجموعة ──
+        $groups = $teacher->assignedGroups()->withCount('students')->get();
+
+        $groupsStats = $groups->map(function ($group) use ($lectures, $month) {
+            $groupLectures = $lectures->where('group_id', $group->id);
+            $groupLectureIds = $groupLectures->pluck('id');
+
+            $total   = Attendance::whereIn('lecture_id', $groupLectureIds)->count();
+            $present = Attendance::whereIn('lecture_id', $groupLectureIds)->where('status', 'present')->count();
+            $absent  = Attendance::whereIn('lecture_id', $groupLectureIds)->where('status', 'absent')->count();
+            $late    = Attendance::whereIn('lecture_id', $groupLectureIds)->where('status', 'late')->count();
+
+            return [
+                'id'              => $group->id,
+                'name'            => $group->name,
+                'grade_level'     => $group->grade_level,
+                'students_count'  => $group->students_count,
+                'lectures_count'  => $groupLectures->count(),
+                'present'         => $present,
+                'absent'          => $absent,
+                'late'            => $late,
+                'attendance_rate' => $total > 0 ? round(($present / $total) * 100, 1) : null,
+            ];
+        });
+
+        // ── الطلاب الأكثر غياباً ──
+        $lowAttendance = [];
+        foreach ($groups as $group) {
+            $groupLectureIds = $lectures->where('group_id', $group->id)->pluck('id');
+            if ($groupLectureIds->isEmpty()) continue;
+
+            $students = $group->students()->with('user')->get();
+            foreach ($students as $student) {
+                $studentTotal   = Attendance::whereIn('lecture_id', $groupLectureIds)->where('student_id', $student->id)->count();
+                $studentPresent = Attendance::whereIn('lecture_id', $groupLectureIds)->where('student_id', $student->id)->where('status', 'present')->count();
+                $studentAbsent  = Attendance::whereIn('lecture_id', $groupLectureIds)->where('student_id', $student->id)->where('status', 'absent')->count();
+
+                if ($studentTotal === 0) continue;
+                $rate = round(($studentPresent / $studentTotal) * 100, 1);
+                if ($rate < 75) {
+                    $lowAttendance[] = [
+                        'name'       => $student->user?->name ?? '—',
+                        'group_name' => $group->name,
+                        'rate'       => $rate,
+                        'absences'   => $studentAbsent,
+                        'total'      => $studentTotal,
+                    ];
+                }
+            }
+        }
+        usort($lowAttendance, fn($a, $b) => $a['rate'] <=> $b['rate']);
+
+        return response()->json([
+            'success' => true,
+            'month'   => $month,
+            'overview' => [
+                'lectures_total'  => $totalLectures,
+                'completed'       => $completedCount,
+                'cancelled'       => $cancelledCount,
+                'scheduled'       => $scheduledCount,
+                'attendance_rate' => $overallRate,
+                'groups_count'    => $groups->count(),
+                'students_count'  => $groups->sum('students_count'),
+            ],
+            'groups_stats'    => $groupsStats->values(),
+            'low_attendance'  => array_slice($lowAttendance, 0, 10),
+        ]);
+    }
+
+    // ─── Teacher Lectures Management ─────────────────────────────────────────
+
+    public function lecturesIndex()
+    {
+        return view('teacher.lectures.index');
+    }
+
+    public function getTeacherLecturesData(Request $request)
+    {
+        $teacher  = auth()->user()->teacher;
+        $query    = $teacher->lectures()->with('group');
+
+        if ($request->group_id)   $query->where('group_id', $request->group_id);
+        if ($request->type)       $query->where('type', $request->type);
+        if ($request->status)     $query->where('status', $request->status);
+        if ($request->month) {
+            $query->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$request->month]);
+        }
+
+        $lectures = $query->orderByDesc('date')->orderByDesc('start_time')->get()->map(fn ($l) => [
+            'id'          => $l->id,
+            'title'       => $l->title,
+            'type'        => $l->type,
+            'status'      => $l->status,
+            'date'        => $l->date?->format('Y-m-d'),
+            'start_time'  => $l->start_time ? substr($l->start_time, 0, 5) : null,
+            'end_time'    => $l->end_time   ? substr($l->end_time,   0, 5) : null,
+            'group_id'    => $l->group_id,
+            'group_name'  => $l->group?->name,
+            'description' => $l->description,
+            'is_today'    => $l->date?->isToday(),
+            'is_past'     => $l->date?->lt(today()),
+        ]);
+
+        $today = $teacher->lectures()->whereDate('date', today())->count();
+        $week  = $teacher->lectures()->whereBetween('date', [now()->startOfWeek(), now()->endOfWeek()])->count();
+
+        return response()->json(['success' => true, 'lectures' => $lectures, 'today_count' => $today, 'week_count' => $week]);
+    }
+
+    public function getTeacherGroupData()
+    {
+        $teacher = auth()->user()->teacher;
+        $groups  = $teacher->assignedGroups()->with('subjects')->get();
+        return response()->json([
+            'success' => true,
+            'groups'  => $groups->map(fn ($g) => [
+                'id'       => $g->id,
+                'name'     => $g->name,
+                'subjects' => $g->subjects->map(fn ($s) => ['id' => $s->id, 'name' => $s->name]),
+            ]),
+        ]);
+    }
+
+    public function storeTeacherLecture(Request $request)
+    {
+        $teacher   = auth()->user()->teacher;
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'type'        => 'required|in:lecture,exam,review,activity',
+            'date'        => 'required|date',
+            'start_time'  => 'required|date_format:H:i',
+            'end_time'    => 'required|date_format:H:i|after:start_time',
+            'group_id'    => 'required|exists:groups,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        if (! $teacher->assignedGroups()->where('groups.id', $validated['group_id'])->exists()) {
+            return response()->json(['success' => false, 'message' => 'ليس لديك صلاحية على هذه المجموعة'], 403);
+        }
+
+        $lecture = Lecture::create([...$validated, 'teacher_id' => $teacher->id, 'status' => 'scheduled']);
+
+        return response()->json(['success' => true, 'message' => 'تم إنشاء المحاضرة بنجاح', 'lecture' => $lecture->load('group')], 201);
+    }
+
+    public function updateTeacherLecture(Request $request, Lecture $lecture)
+    {
+        $teacher = auth()->user()->teacher;
+        if ($lecture->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'type'        => 'required|in:lecture,exam,review,activity',
+            'date'        => 'required|date',
+            'start_time'  => 'required|date_format:H:i',
+            'end_time'    => 'required|date_format:H:i|after:start_time',
+            'group_id'    => 'required|exists:groups,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $lecture->update($validated);
+        return response()->json(['success' => true, 'message' => 'تم تحديث المحاضرة بنجاح']);
+    }
+
+    public function destroyTeacherLecture(Lecture $lecture)
+    {
+        $teacher = auth()->user()->teacher;
+        if ($lecture->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+        $lecture->delete();
+        return response()->json(['success' => true, 'message' => 'تم حذف المحاضرة']);
+    }
+
+    public function rescheduleTeacherLecture(Request $request, Lecture $lecture)
+    {
+        $teacher = auth()->user()->teacher;
+        if ($lecture->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $validated = $request->validate([
+            'new_date'       => 'required|date',
+            'new_start_time' => 'nullable|date_format:H:i',
+            'new_end_time'   => 'nullable|date_format:H:i',
+            'reason'         => 'nullable|string',
+        ]);
+
+        $lecture->update([
+            'date'             => $validated['new_date'],
+            'start_time'       => $validated['new_start_time'] ?? $lecture->start_time,
+            'end_time'         => $validated['new_end_time']   ?? $lecture->end_time,
+            'status'           => 'scheduled',
+            'reschedule_reason'=> $validated['reason'] ?? null,
+            'rescheduled_at'   => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم تأجيل المحاضرة بنجاح']);
+    }
+
+    public function cancelTeacherLecture(Request $request, Lecture $lecture)
+    {
+        $teacher = auth()->user()->teacher;
+        if ($lecture->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $lecture->update([
+            'status'              => 'cancelled',
+            'cancellation_reason' => $request->get('reason'),
+            'cancelled_at'        => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم إلغاء المحاضرة']);
+    }
+
+    public function getTeacherLectureStudents(Lecture $lecture)
+    {
+        $teacher = auth()->user()->teacher;
+        if ($lecture->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $students = $lecture->group?->students()->with('user')->get() ?? collect();
+        $existing = Attendance::where('lecture_id', $lecture->id)->pluck('status', 'student_id');
+
+        return response()->json([
+            'success'  => true,
+            'lecture'  => ['id' => $lecture->id, 'title' => $lecture->title, 'date' => $lecture->date->format('Y-m-d'), 'group_name' => $lecture->group?->name],
+            'students' => $students->map(fn ($s) => ['id' => $s->id, 'name' => $s->user?->name ?? '—']),
+            'existing' => $existing,
+        ]);
+    }
+
+    public function saveTeacherLectureAttendance(Request $request, Lecture $lecture)
+    {
+        $teacher = auth()->user()->teacher;
+        if ($lecture->teacher_id !== $teacher->id) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        if ($lecture->date->gt(today())) {
+            return response()->json(['success' => false, 'message' => 'لا يمكن تسجيل حضور لمحاضرة مستقبلية'], 400);
+        }
+
+        $validated = $request->validate([
+            'attendance'   => 'required|array',
+            'attendance.*' => 'required|in:present,absent,late',
+        ]);
+
+        foreach ($validated['attendance'] as $studentId => $status) {
+            Attendance::updateOrCreate(
+                ['student_id' => $studentId, 'lecture_id' => $lecture->id],
+                ['status'     => $status]
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم حفظ الحضور بنجاح لـ ' . count($validated['attendance']) . ' طالب']);
     }
 
     private function getTeacherAttendanceRate($teacherId, $month = null)

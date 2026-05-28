@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Jobs\SendAdmissionNotification;
 use App\Models\Admission;
 use App\Models\Group;
+use App\Models\Payment;
 use App\Models\Student;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -45,13 +46,16 @@ class AdmissionService
 
         $student = $admission->convertToStudent($groupId, Auth::id());
 
+        $this->generatePaymentsForStudent($student, $admission);
+
         SendAdmissionNotification::dispatch($admission, 'approved');
 
         Log::info('تم قبول طلب الانتساب', [
-            'admission_id' => $admission->id,
-            'student_id'   => $student->id,
-            'group_name'   => $group->name,
-            'approved_by'  => Auth::id(),
+            'admission_id'  => $admission->id,
+            'student_id'    => $student->id,
+            'group_name'    => $group->name,
+            'approved_by'   => Auth::id(),
+            'num_payments'  => $admission->num_payments,
         ]);
 
         return $student;
@@ -80,6 +84,42 @@ class AdmissionService
 
             return true;
         });
+    }
+
+    /**
+     * توليد السجل المالي للطالب عند قبول طلب انتسابه
+     */
+    private function generatePaymentsForStudent(Student $student, Admission $admission): void
+    {
+        $approvedAt  = now();
+        $numPayments = max(1, (int) $admission->num_payments);
+        $monthlyFee  = (float) $admission->monthly_fee;
+
+        // 1. رسوم طلب الانتساب — مدفوعة فوراً
+        Payment::create([
+            'student_id'     => $student->id,
+            'amount'         => 30,
+            'month'          => $approvedAt->format('Y-m'),
+            'type'           => 'admission_fee',
+            'status'         => 'paid',
+            'due_date'       => $approvedAt->toDateString(),
+            'paid_date'      => $approvedAt->toDateString(),
+            'payment_method' => 'cash',
+            'notes'          => 'رسوم طلب الانتساب',
+        ]);
+
+        // 2. الدفعات الشهرية — due_date = تاريخ القبول + i أشهر
+        for ($i = 0; $i < $numPayments; $i++) {
+            $dueDate = $approvedAt->copy()->addMonths($i);
+            Payment::create([
+                'student_id' => $student->id,
+                'amount'     => $monthlyFee,
+                'month'      => $dueDate->format('Y-m'),
+                'type'       => 'monthly',
+                'status'     => 'unpaid',
+                'due_date'   => $dueDate->toDateString(),
+            ]);
+        }
     }
 
     private function sendSMS(string $phone, string $message): bool

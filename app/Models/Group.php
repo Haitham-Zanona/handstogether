@@ -15,11 +15,34 @@ class Group extends Model
         'max_capacity',
         'is_active',
         'description',
+        'grade_weights',
+        'is_archived',
+        'final_exam_active',
+        'start_date',
+        'end_date',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_active'          => 'boolean',
+        'is_archived'        => 'boolean',
+        'final_exam_active'  => 'boolean',
+        'grade_weights'      => 'array',
+        'start_date'         => 'date',
+        'end_date'           => 'date',
     ];
+
+    public function getWeightsAttribute(): array
+    {
+        return $this->grade_weights ?? ['evaluations' => 20, 'monthly_tests' => 30, 'final_exam' => 50];
+    }
+
+    public function getCurrentEvalPeriodAttribute(): int
+    {
+        if (! $this->start_date) return 1;
+        $days = now()->diffInDays($this->start_date, false);
+        if ($days < 0) return 1;
+        return min(8, max(1, (int) ceil(($days + 1) / 14)));
+    }
 
     public function students()
     {

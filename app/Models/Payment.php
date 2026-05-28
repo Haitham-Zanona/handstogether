@@ -5,7 +5,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class Payment extends Model
 {
-    protected $fillable = ['student_id', 'amount', 'month', 'status', 'paid_date', 'payment_method'];
+    protected $fillable = [
+        'student_id', 'amount', 'month', 'status', 'type',
+        'due_date', 'paid_date', 'payment_method', 'account_name', 'notes',
+        'reminder_grace_days', 'last_reminder_sent_at',
+    ];
+
+    protected $casts = [
+        'due_date'              => 'date',
+        'paid_date'             => 'date',
+        'amount'                => 'decimal:2',
+        'last_reminder_sent_at' => 'datetime',
+    ];
 
     public function student()
     {
