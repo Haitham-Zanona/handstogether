@@ -1,19 +1,4 @@
-<!-- زر Toggle للقائمة الجانبية -->
-<button id="sidebarToggle"
-    class="fixed top-4 right-4 z-50 p-3 text-white rounded-lg shadow-lg bg-primary hover:bg-blue-700 transition-all duration-300 lg:hidden">
-    <div class="relative w-6 h-5">
-        <span class="absolute top-0 left-0 w-full h-0.5 bg-current transform transition-all duration-300" id="line1"></span>
-        <span class="absolute top-2 left-0 w-full h-0.5 bg-current transform transition-all duration-300" id="line2"></span>
-        <span class="absolute top-4 left-0 w-full h-0.5 bg-current transform transition-all duration-300" id="line3"></span>
-    </div>
-</button>
-
-<!-- Overlay للموبايل -->
-<div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-30 lg:hidden hidden transition-opacity duration-300"></div>
-
-<!-- القائمة الجانبية -->
-<aside id="sidebar"
-    class="fixed top-0 right-0 h-full w-64 bg-primary shadow-xl transform translate-x-full lg:translate-x-0 lg:static lg:shadow-none transition-transform duration-300 ease-in-out z-40 flex flex-col">
+<aside id="sidebar" class="bg-primary w-64 flex flex-col h-full overflow-hidden">
 
     <!-- رأس القائمة -->
     <div class="flex items-center justify-between p-6 border-b border-blue-600">

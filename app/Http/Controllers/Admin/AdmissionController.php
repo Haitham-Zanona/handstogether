@@ -334,9 +334,17 @@ class AdmissionController extends Controller
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'success'    => true,
-                    'message'    => "تم قبول انتساب {$admission->student_name} بنجاح وإنشاء حساباته",
-                    'student_id' => $student->id,
+                    'success'     => true,
+                    'message'     => "تم قبول انتساب {$admission->student_name} بنجاح",
+                    'student_id'  => $student->id,
+                    'credentials' => [
+                        'student_name'        => $admission->student_name,
+                        'parent_name'         => $admission->parent_name,
+                        'application_number'  => $admission->application_number,
+                        'student_national_id' => $admission->student_id,
+                        'parent_national_id'  => $admission->parent_id,
+                        'father_phone'        => $admission->father_phone ?: $admission->phone,
+                    ],
                 ]);
             }
 
@@ -359,6 +367,28 @@ class AdmissionController extends Controller
 
             return back()->with('error', 'حدث خطأ أثناء قبول الطلب');
         }
+    }
+
+    /**
+     * بيانات دخول طلب مقبول
+     */
+    public function credentials(Admission $admission)
+    {
+        if ($admission->status !== 'approved') {
+            return response()->json(['success' => false, 'message' => 'الطلب غير مقبول'], 400);
+        }
+
+        return response()->json([
+            'success'     => true,
+            'credentials' => [
+                'student_name'        => $admission->student_name,
+                'parent_name'         => $admission->parent_name,
+                'application_number'  => $admission->application_number,
+                'student_national_id' => $admission->student_id,
+                'parent_national_id'  => $admission->parent_id,
+                'father_phone'        => $admission->father_phone ?: $admission->phone,
+            ],
+        ]);
     }
 
     /**

@@ -203,7 +203,7 @@ class Admission extends Model
             $parent      = User::create([
                 'name'        => $this->formatted_parent_name,
                 'email'       => $parentEmail,
-                'password'    => Hash::make('123456'),
+                'password'    => Hash::make($this->father_phone ?: $this->phone),
                 'role'        => 'parent',
                 'phone'       => $this->father_phone ?: $this->phone,
                 'national_id' => $this->parent_id,
@@ -213,7 +213,7 @@ class Admission extends Model
             $studentUser  = User::create([
                 'name'        => $this->formatted_student_name,
                 'email'       => $studentEmail,
-                'password'    => Hash::make('123456'),
+                'password'    => Hash::make($this->application_number),
                 'role'        => 'student',
                 'national_id' => $this->student_id,
                 'birth_date'  => $this->birth_date,

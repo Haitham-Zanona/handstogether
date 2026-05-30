@@ -342,84 +342,77 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
         </div>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+    <div>
+        <table class="w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
-                        اسم الطالب
-                    </th>
-                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
-                        ولي الأمر
-                    </th>
-                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
-                        المجموعة
-                    </th>
-                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
-                        رقم الهاتف
-                    </th>
-                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
-                        الحالة
-                    </th>
-                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
-                        تاريخ التقديم
-                    </th>
-                    <th class="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
-                        الإجراءات
-                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 w-[22%]">اسم الطالب</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 w-[18%]">ولي الأمر</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 w-[14%]">المجموعة</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 w-[13%]">رقم الهاتف</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 w-[9%]">الحالة</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 w-[10%]">التاريخ</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 w-[14%]">الإجراءات</th>
                 </tr>
             </thead>
             <tbody id="admissionsTableBody" class="bg-white divide-y divide-gray-200">
                 @forelse($admissions as $admission)
-                <tr data-status="{{ $admission->status }}">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">{{ $admission->student_name }}</div>
+                <tr class="hover:bg-gray-50 transition-colors" data-status="{{ $admission->status }}">
+                    <td class="px-4 py-3">
+                        <div class="text-sm font-semibold text-gray-900 leading-snug">{{ $admission->student_name }}</div>
+                        <div class="text-xs text-gray-400 mt-0.5">#{{ $admission->application_number }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ $admission->parent_name }}</div>
+                    <td class="px-4 py-3">
+                        <div class="text-sm text-gray-800">{{ $admission->parent_name }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-4 py-3">
                         @if($admission->group)
-                        <div class="text-sm text-gray-900">{{ $admission->group->name }}</div>
+                        <div class="text-sm text-gray-800">{{ $admission->group->name }}</div>
                         @else
-                        <div class="text-sm text-gray-500">غير مخصص لمجموعة</div>
+                        <div class="text-xs text-gray-400 italic">غير محدد</div>
                         @endif
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ $admission->father_phone }}</div>
+                    <td class="px-4 py-3">
+                        <div class="text-sm text-gray-700 font-mono">{{ $admission->father_phone }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-4 py-3">
                         @php
                         $statusClasses = [
-                        'pending' => 'bg-yellow-100 text-yellow-800',
-                        'approved' => 'bg-green-100 text-green-800',
-                        'rejected' => 'bg-red-100 text-red-800'
+                            'pending'  => 'bg-yellow-100 text-yellow-800',
+                            'approved' => 'bg-green-100 text-green-800',
+                            'rejected' => 'bg-red-100 text-red-800',
                         ];
                         @endphp
-                        <span
-                            class="inline-flex px-2 text-xs font-semibold rounded-full {{ $statusClasses[$admission->status] }}">
+                        <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ $statusClasses[$admission->status] ?? '' }}">
                             {{ $admission->status_in_arabic }}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                    <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                         {{ $admission->created_at->format('Y-m-d') }}
                     </td>
-                    <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
+                    <td class="px-4 py-3">
                         @if($admission->status === 'pending')
-                        <div class="flex items-center space-x-2 space-x-reverse">
-                            <!-- Approve Button -->
+                        <div class="flex items-center gap-2">
                             <button onclick="openApproveModal({{ $admission->id }}, '{{ $admission->student_name }}')"
-                                class="font-semibold mr-1 text-green-600 transition-colors duration-200 hover:text-green-800">
+                                class="text-xs font-semibold text-green-600 hover:text-green-800 transition-colors">
                                 قبول
                             </button>
-                            <!-- Reject Button -->
+                            <span class="text-gray-300">|</span>
                             <button onclick="openRejectModal({{ $admission->id }})"
-                                class="font-semibold mr-1 text-red-600 transition-colors duration-200 hover:text-red-800">
+                                class="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors">
                                 رفض
                             </button>
                         </div>
+                        @elseif($admission->status === 'approved')
+                        <button onclick="showAdmissionCredentials({{ $admission->id }})"
+                            class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-primary rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap">
+                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                            </svg>
+                            بيانات الدخول
+                        </button>
                         @else
-                        <span class="font-medium text-gray-400">تم المعالجة</span>
+                        <span class="text-xs text-gray-400">—</span>
                         @endif
                     </td>
                 </tr>
@@ -781,10 +774,104 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
     </div>
 </div>
 
+<!-- ═══ Credentials Modal ═══ -->
+<div id="credentials-modal"
+    class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/60 p-4"
+    style="display:none">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
+
+        <!-- Header -->
+        <div class="flex items-center gap-3 px-6 py-4 bg-green-50 rounded-t-2xl border-b border-green-200">
+            <div class="flex items-center justify-center w-10 h-10 bg-green-500 rounded-full text-white shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <div class="min-w-0">
+                <h3 class="font-bold text-gray-900">بيانات الدخول</h3>
+                <p id="cred-student-name" class="text-sm text-gray-500 truncate"></p>
+            </div>
+            <button onclick="closeCredentialsModal()" class="mr-auto text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-4" id="credentials-print-area">
+
+            <!-- ولي الأمر -->
+            <div class="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                <h4 class="flex items-center gap-2 text-sm font-bold text-blue-800 mb-3">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    بيانات دخول ولي الأمر
+                </h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-gray-500 shrink-0">اسم المستخدم (رقم هوية الأب):</span>
+                        <span id="cred-parent-id" class="font-mono font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded select-all"></span>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-gray-500 shrink-0">كلمة المرور (رقم الجوال):</span>
+                        <span id="cred-father-phone" class="font-mono font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded select-all"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- الطالب -->
+            <div class="bg-green-50 rounded-xl p-4 border border-green-200">
+                <h4 class="flex items-center gap-2 text-sm font-bold text-green-800 mb-3">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                    </svg>
+                    بيانات دخول الطالب
+                </h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-gray-500 shrink-0">اسم المستخدم (رقم هوية الطالب):</span>
+                        <span id="cred-student-id" class="font-mono font-bold text-green-900 bg-green-100 px-2 py-0.5 rounded select-all"></span>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-gray-500 shrink-0">كلمة المرور (رقم الطلب):</span>
+                        <span id="cred-app-number" class="font-mono font-bold text-green-900 bg-green-100 px-2 py-0.5 rounded select-all text-lg"></span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-xs text-center text-gray-400">سلّم هذه البيانات للطالب وولي أمره • تستطيع طباعتها أو نسخها</p>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-2 px-5 py-4 border-t border-gray-100">
+            <button onclick="printCredentials()"
+                class="flex items-center gap-2 flex-1 justify-center px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-blue-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                طباعة
+            </button>
+            <button onclick="copyCredentials()"
+                class="flex items-center gap-2 flex-1 justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                نسخ
+            </button>
+            <button onclick="closeCredentialsModal()"
+                class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                إغلاق
+            </button>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
-
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
     // نظام إدارة طلبات الانتساب - الكود الكامل
@@ -1145,9 +1232,13 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
         const result = await response.json();
 
         if (result.success) {
-        showNotification(result.message, 'success');
         closeApproveModal();
-        setTimeout(() => location.reload(), 1500);
+        if (result.credentials) {
+            showCredentialsModal(result.credentials);
+        } else {
+            showNotification(result.message, 'success');
+            setTimeout(() => location.reload(), 1500);
+        }
         } else {
         showNotification(result.message || 'حدث خطأ في الموافقة', 'error');
         }
@@ -2001,6 +2092,115 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 
         console.log('%c🎓 نظام إدارة طلبات الانتساب ', 'background: #2778E5; color: #EE8100; font-size: 16px; padding: 8px; border-radius: 4px;');
         console.log('✅ تم تحميل النظام بنجاح! جميع الوظائف متاحة.');
+    });
+
+    // ═══════════════════════════════════════════
+    //  Credentials Modal — بيانات الدخول
+    // ═══════════════════════════════════════════
+
+    function showCredentialsModal(cred) {
+        document.getElementById('cred-student-name').textContent =
+            cred.student_name + ' — ' + (cred.parent_name ? 'ولي الأمر: ' + cred.parent_name : '');
+        document.getElementById('cred-parent-id').textContent    = cred.parent_national_id  || '—';
+        document.getElementById('cred-father-phone').textContent = cred.father_phone        || '—';
+        document.getElementById('cred-student-id').textContent   = cred.student_national_id || '—';
+        document.getElementById('cred-app-number').textContent   = cred.application_number  || '—';
+
+        const modal = document.getElementById('credentials-modal');
+        modal.style.display = 'flex';
+
+        // إعادة تحميل الصفحة عند إغلاق الـ modal
+        modal._reloadOnClose = true;
+    }
+
+    function closeCredentialsModal() {
+        const modal = document.getElementById('credentials-modal');
+        modal.style.display = 'none';
+        if (modal._reloadOnClose) {
+            modal._reloadOnClose = false;
+            location.reload();
+        }
+    }
+
+    // فتح الـ modal لطلب مقبول موجود مسبقاً
+    window.showAdmissionCredentials = async function(admissionId) {
+        try {
+            const res = await fetch(`/admin/admissions/${admissionId}/credentials`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('credentials-modal')._reloadOnClose = false;
+                showCredentialsModal(data.credentials);
+            } else {
+                alert(data.message || 'تعذّر جلب البيانات');
+            }
+        } catch (e) {
+            alert('حدث خطأ في الاتصال');
+        }
+    };
+
+    window.showCredentialsModal  = showCredentialsModal;
+    window.closeCredentialsModal = closeCredentialsModal;
+
+    // طباعة بيانات الدخول
+    window.printCredentials = function() {
+        const area = document.getElementById('credentials-print-area').innerHTML;
+        const win  = window.open('', '_blank', 'width=480,height=600');
+        win.document.write(`
+            <!DOCTYPE html><html lang="ar" dir="rtl">
+            <head>
+                <meta charset="UTF-8">
+                <title>بيانات الدخول</title>
+                <style>
+                    body { font-family: Tahoma, Arial, sans-serif; padding: 24px; direction: rtl; }
+                    h4  { margin: 0 0 8px; font-size: 14px; }
+                    .bg-blue-50  { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px; margin-bottom:12px; }
+                    .bg-green-50 { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px; margin-bottom:12px; }
+                    span.font-mono { font-family: monospace; font-weight:bold; font-size:15px; background:#e0e7ff; padding:2px 6px; border-radius:4px; }
+                    .flex { display:flex; justify-content:space-between; margin-bottom:6px; align-items:center; }
+                    .text-gray-500 { color:#6b7280; font-size:13px; }
+                    p.text-xs { font-size:11px; color:#9ca3af; text-align:center; margin-top:12px; }
+                    @media print { body { padding: 8px; } }
+                </style>
+            </head>
+            <body>${area}</body>
+            </html>
+        `);
+        win.document.close();
+        win.focus();
+        setTimeout(() => { win.print(); win.close(); }, 300);
+    };
+
+    // نسخ البيانات للحافظة
+    window.copyCredentials = function() {
+        const lines = [
+            '═══ بيانات دخول ولي الأمر ═══',
+            'اسم المستخدم (رقم هوية الأب): ' + document.getElementById('cred-parent-id').textContent,
+            'كلمة المرور (رقم الجوال):     ' + document.getElementById('cred-father-phone').textContent,
+            '',
+            '═══ بيانات دخول الطالب ═══',
+            'اسم المستخدم (رقم هوية الطالب): ' + document.getElementById('cred-student-id').textContent,
+            'كلمة المرور (رقم الطلب):         ' + document.getElementById('cred-app-number').textContent,
+        ].join('\n');
+
+        navigator.clipboard.writeText(lines).then(() => {
+            const btn = event.currentTarget;
+            const orig = btn.innerHTML;
+            btn.textContent = '✅ تم النسخ';
+            btn.disabled = true;
+            setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+        }).catch(() => {
+            prompt('انسخ البيانات يدوياً:', lines);
+        });
+    };
+
+    // إغلاق بالنقر خارج الـ modal
+    document.getElementById('credentials-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeCredentialsModal();
     });
 </script>
 

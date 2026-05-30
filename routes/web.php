@@ -26,6 +26,8 @@ Route::prefix('portal')->group(function () {
 // Custom authentication route
 Route::post('/login', [AuthController::class, 'authenticate'])->name('login');
 Route::post('/login/teacher', [AuthController::class, 'authenticateTeacher'])->name('login.teacher');
+Route::post('/login/parent', [AuthController::class, 'authenticateParent'])->name('login.parent');
+Route::post('/login/student', [AuthController::class, 'authenticateStudent'])->name('login.student');
 
 // Protected routes with role middleware
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -95,6 +97,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::controller(AdmissionController::class)->prefix('admissions')->name('admissions.')->group(function () {
             // موافقة ورفض الطلبات
             Route::patch('{admission}/approve', 'approve')->name('approve');
+            Route::get('{admission}/credentials', 'credentials')->name('credentials');
             Route::patch('{admission}/reject', 'reject')->name('reject');
 
             // إعادة تعيين حالة الطلب (للمشرفين فقط)
@@ -243,6 +246,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/staff/{teacher}', [AdminController::class, 'destroyTeacher'])->name('staff.destroy');
 
         // Settings Routes
+        // شكاوي وطلبات أولياء الأمور
+        Route::get('/messages', [AdminController::class, 'parentMessages'])->name('messages');
+        Route::post('/messages/{message}/mark-read', [AdminController::class, 'markMessageRead'])->name('messages.mark-read');
+
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
         Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
         Route::post('/settings/clear-data', [AdminController::class, 'clearData'])->name('settings.clear-data');
@@ -311,14 +318,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/attendance', [ParentController::class, 'attendance'])->name('attendance');
         Route::get('/schedule', [ParentController::class, 'schedule'])->name('schedule');
         Route::get('/payments', [ParentController::class, 'payments'])->name('payments');
+        Route::get('/grades', [ParentController::class, 'grades'])->name('grades');
+        Route::get('/messages', [ParentController::class, 'messages'])->name('messages');
+        Route::post('/messages', [ParentController::class, 'sendMessage'])->name('messages.send');
     });
 
     // Student routes
     Route::middleware('role:student')->prefix('student')->name('student.')->group(function () {
         Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
         Route::get('/schedule', [StudentController::class, 'schedule'])->name('schedule');
-        Route::get('/lectures', [StudentController::class, 'lectures'])->name('lectures');
-        Route::get('/reports', [StudentController::class, 'reports'])->name('reports');
+        Route::get('/attendance', [StudentController::class, 'attendance'])->name('attendance');
+        Route::get('/grades', [StudentController::class, 'grades'])->name('grades');
+        Route::get('/payments', [StudentController::class, 'payments'])->name('payments');
     });
 });
 

@@ -26,8 +26,11 @@ class SeriesGenerator
             : $fromDate->copy()->addMonths(4);
         $current = $fromDate->copy();
 
+        // أسماء الأيام بنفس ترتيب Carbon::dayOfWeek (0=Sunday ... 6=Saturday)
+        $dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
         while ($current->lte($end)) {
-            if (in_array((string) $current->dayOfWeek, $days)) {
+            if (in_array($dayNames[$current->dayOfWeek], $days)) {
                 Lecture::create([
                     'title'      => $series->title,
                     'date'       => $current->toDateString(),

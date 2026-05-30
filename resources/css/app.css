@@ -1,1 +1,70 @@
 @import "tailwindcss";
+
+/* ================================================
+   Global Responsive Utilities
+   ================================================ */
+
+/* Auto-wrap ALL tables in overflow container */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent table cells from being too narrow */
+table th, table td {
+    white-space: nowrap;
+}
+
+/* Allow content cells to wrap */
+table td.wrap {
+    white-space: normal;
+}
+
+/* ================================================
+   Mobile: compact card stats (< 640px)
+   ================================================ */
+@media (max-width: 639px) {
+    /* Stack grid cards to single column */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    /* Reduce padding on cards */
+    .card-compact {
+        padding: 0.75rem;
+    }
+
+    /* Hide non-essential table columns on mobile */
+    .hide-mobile {
+        display: none;
+    }
+
+    /* Smaller text in table cells */
+    table td, table th {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.5rem;
+    }
+}
+
+/* ================================================
+   Dashboard layout: prevent sidebar overlap
+   ================================================ */
+@media (max-width: 1023px) {
+    #main-content {
+        padding-top: 0;
+    }
+}
+
+/* ================================================
+   Print: hide navigation
+   ================================================ */
+@media print {
+    #sidebar, header, #sidebarToggle, #sidebarOverlay {
+        display: none !important;
+    }
+    main {
+        overflow: visible !important;
+    }
+}

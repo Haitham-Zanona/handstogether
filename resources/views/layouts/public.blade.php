@@ -6,25 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'الأكاديمية التعليمية' }}</title>
 
-    <!-- Arabic Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700&display=swap"
-        rel="stylesheet">
-
-
-    <!-- HTML2Canvas for image export -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-
-    <!-- jsPDF for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-    <!-- CSRF Token for AJAX -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- FullCalendar CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+    <!-- Preconnect to reduce DNS time -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    <!-- Tailwind CSS -->
+    <!-- Arabic Font — display=swap, no render blocking -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS (critical) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    @stack('styles')
 
     <style>
         body {
@@ -201,25 +195,35 @@
                                 </svg>
                             </button>
                             <div
-                                class="absolute left-0 invisible w-48 mt-2 transition-all duration-300 bg-white rounded-md shadow-lg opacity-0 group-hover:opacity-100 group-hover:visible">
-                                <div class="py-1">
-                                    <a href="{{ route('portal.admin') }}"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
-                                        بوابة الإداريين
-                                    </a>
-                                    <a href="{{ route('portal.teacher') }}"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
-                                        بوابة المدرسين
-                                    </a>
-                                    <a href="{{ route('portal.parent') }}"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
-                                        بوابة أولياء الأمور
-                                    </a>
-                                    <a href="{{ route('portal.student') }}"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white">
-                                        بوابة الطلبة
-                                    </a>
-                                </div>
+                                class="absolute left-0 invisible w-52 mt-2 transition-all duration-300 bg-white rounded-xl shadow-lg overflow-hidden opacity-0 group-hover:opacity-100 group-hover:visible">
+                                @auth
+                                {{-- مسجّل دخول: روابط مباشرة للوحة التحكم --}}
+                                <a href="{{ auth()->user()->getDashboardRoute() }}"
+                                    class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary hover:text-white transition-colors border-b border-gray-100">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                    </svg>
+                                    لوحة التحكم ({{ auth()->user()->role === 'admin' ? 'إداري' : (auth()->user()->role === 'teacher' ? 'مدرس' : (auth()->user()->role === 'parent' ? 'ولي أمر' : 'طالب')) }})
+                                </a>
+                                @else
+                                {{-- غير مسجّل: بوابات تسجيل الدخول --}}
+                                <a href="{{ route('portal.admin') }}"
+                                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-primary hover:text-white transition-colors">
+                                    بوابة الإداريين
+                                </a>
+                                <a href="{{ route('portal.teacher') }}"
+                                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-primary hover:text-white transition-colors">
+                                    بوابة المدرسين
+                                </a>
+                                <a href="{{ route('portal.parent') }}"
+                                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-primary hover:text-white transition-colors">
+                                    بوابة أولياء الأمور
+                                </a>
+                                <a href="{{ route('portal.student') }}"
+                                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-primary hover:text-white transition-colors">
+                                    بوابة الطلبة
+                                </a>
+                                @endauth
                             </div>
                         </div>
                     </div>
@@ -340,21 +344,25 @@
 
                             <!-- User Dropdown -->
                             <div id="user-menu-dropdown"
-                                class="absolute left-0 z-50 hidden w-48 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg">
-                                <div class="py-1">
-                                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">الملف
-                                        الشخصي</a>
-                                    <a href="#"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">الإعدادات</a>
-                                    <div class="border-t border-gray-200"></div>
-                                    <form method="POST" action="{{ route('logout') }}">
-                                        @csrf
-                                        <button type="submit"
-                                            class="block w-full px-4 py-2 text-sm text-right text-red-700 hover:bg-red-50">
-                                            تسجيل الخروج
-                                        </button>
-                                    </form>
-                                </div>
+                                class="absolute left-0 z-50 hidden w-48 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                                <a href="{{ auth()->user()->getDashboardRoute() }}"
+                                    class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary hover:text-white transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                    </svg>
+                                    لوحة التحكم
+                                </a>
+                                <div class="border-t border-gray-100"></div>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit"
+                                        class="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                        </svg>
+                                        تسجيل الخروج
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -390,42 +398,44 @@
                     معنا</a>
 
                 <div class="pt-2 border-t border-gray-200">
-                    <p class="px-3 py-1 text-xs tracking-wider text-gray-500 uppercase">بوابات الأكاديمية</p>
+                    <p class="px-3 py-1 text-xs tracking-wider text-gray-500">بوابات الأكاديمية</p>
+                    @auth
+                    {{-- مسجّل: رابط مباشر للوحة التحكم --}}
+                    <a href="{{ auth()->user()->getDashboardRoute() }}"
+                        class="flex items-center gap-2 px-3 py-2 text-base font-medium text-primary rounded-md hover:bg-gray-50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
+                        لوحة التحكم
+                    </a>
+                    @else
                     <a href="{{ route('portal.admin') }}"
-                        class="block px-3 py-2 text-base font-medium text-gray-700 rounded-md hover:text-primary">بوابة
-                        الإداريين</a>
+                        class="block px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:text-primary">بوابة الإداريين</a>
                     <a href="{{ route('portal.teacher') }}"
-                        class="block px-3 py-2 text-base font-medium text-gray-700 rounded-md hover:text-primary">بوابة
-                        المدرسين</a>
+                        class="block px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:text-primary">بوابة المدرسين</a>
                     <a href="{{ route('portal.parent') }}"
-                        class="block px-3 py-2 text-base font-medium text-gray-700 rounded-md hover:text-primary">بوابة
-                        أولياء الأمور</a>
+                        class="block px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:text-primary">بوابة أولياء الأمور</a>
                     <a href="{{ route('portal.student') }}"
-                        class="block px-3 py-2 text-base font-medium text-gray-700 rounded-md hover:text-primary">بوابة
-                        الطلبة</a>
+                        class="block px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:text-primary">بوابة الطلبة</a>
+                    @endauth
                 </div>
 
                 <!-- Mobile User Menu -->
                 @auth
                 <div class="pt-2 mt-2 border-t border-gray-200">
-                    <div class="flex items-center px-3 py-2">
-                        <div class="flex items-center justify-center w-8 h-8 ml-2 text-white rounded-full bg-primary">
-                            <span class="text-sm font-semibold">{{ substr(auth()->user()->name, 0, 2) }}</span>
+                    <div class="flex items-center gap-2 px-3 py-2">
+                        <div class="flex items-center justify-center w-8 h-8 text-white text-sm font-bold rounded-full bg-primary shrink-0">
+                            {{ mb_substr(auth()->user()->name, 0, 1) }}
                         </div>
-                        <span class="text-base font-medium text-gray-700">{{ auth()->user()->name }}</span>
+                        <span class="text-sm font-medium text-gray-700 truncate">{{ auth()->user()->name }}</span>
                     </div>
-                    <a href="#"
-                        class="block px-3 py-2 text-base font-medium text-gray-700 rounded-md hover:text-primary">
-                        الملف الشخصي
-                    </a>
-                    <a href="#"
-                        class="block px-3 py-2 text-base font-medium text-gray-700 rounded-md hover:text-primary">
-                        الإعدادات
-                    </a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit"
-                            class="block w-full px-3 py-2 text-base font-medium text-right text-red-700 rounded-md hover:bg-red-50">
+                            class="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
                             تسجيل الخروج
                         </button>
                     </form>

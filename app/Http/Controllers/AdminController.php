@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\GroupSubject;
 use App\Models\Lecture;
 use App\Models\LectureSeries;
+use App\Models\ParentMessage;
 use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Subject;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -28,23 +30,37 @@ class AdminController extends Controller
 
     public function dashboard()
     {
-        $studentsCount     = Student::count();
-        $teachersCount     = Teacher::count();
-        $groupsCount       = Group::count();
-        $pendingAdmissions = Admission::pending()->count();
+        // الإحصائيات الثابتة: cache لمدة 5 دقائق
+        $counts = Cache::remember('admin_dashboard_counts', 300, fn () => [
+            'students'   => Student::count(),
+            'teachers'   => Teacher::count(),
+            'groups'     => Group::count(),
+            'pending'    => Admission::pending()->count(),
+        ]);
 
-        // Get upcoming lectures for calendar
-        $lectures = Lecture::with(['teacher.user', 'group'])
-            ->where('date', '>=', today())
-            ->get()
-            ->map(fn($lecture) => $lecture->toCalendarEvent());
+        $studentsCount     = $counts['students'];
+        $teachersCount     = $counts['teachers'];
+        $groupsCount       = $counts['groups'];
+        $pendingAdmissions = $counts['pending'];
 
-        // Get recent statistics
-        $monthlyStats = [
-            'new_students'    => Student::whereMonth('created_at', now()->month)->count(),
-            'total_payments'  => Payment::paid()->whereMonth('created_at', now()->month)->sum('amount'),
-            'attendance_rate' => $this->getOverallAttendanceRate(),
-        ];
+        // المحاضرات القادمة: SELECT الأعمدة المطلوبة فقط
+        $lectures = Cache::remember('admin_dashboard_lectures', 120, fn () =>
+            Lecture::select('id', 'title', 'date', 'start_time', 'end_time', 'type', 'status', 'teacher_id', 'group_id')
+                ->with(['teacher:id,user_id', 'teacher.user:id,name', 'group:id,name'])
+                ->where('date', '>=', today())
+                ->where('status', '!=', 'cancelled')
+                ->orderBy('date')->orderBy('start_time')
+                ->limit(100)
+                ->get()
+                ->map(fn ($l) => $l->toCalendarEvent())
+        );
+
+        // الإحصائيات الشهرية: cache لمدة 10 دقائق
+        $monthlyStats = Cache::remember('admin_dashboard_monthly_' . now()->format('Y-m'), 600, fn () => [
+            'new_students'   => Student::whereMonth('created_at', now()->month)->count(),
+            'total_payments' => Payment::paid()->whereMonth('paid_date', now()->month)->sum('amount'),
+            'attendance_rate'=> $this->getOverallAttendanceRate(),
+        ]);
 
         return view('admin.dashboard', compact(
             'studentsCount', 'teachersCount', 'groupsCount',
@@ -1327,6 +1343,25 @@ class AdminController extends Controller
     {
         $teacher->user()->delete();
         return response()->json(['success' => true, 'message' => 'تم حذف حساب المدرس']);
+    }
+
+    public function parentMessages()
+    {
+        $messages = ParentMessage::with(['parent', 'student.user', 'student.group'])
+            ->latest()
+            ->paginate(20);
+
+        $unreadCount = ParentMessage::unread()->count();
+
+        return view('admin.messages', compact('messages', 'unreadCount'));
+    }
+
+    public function markMessageRead($id)
+    {
+        $message = ParentMessage::findOrFail($id);
+        $message->update(['is_read' => true, 'read_at' => now()]);
+
+        return response()->json(['success' => true]);
     }
 
     public function settings()
@@ -2714,9 +2749,10 @@ class AdminController extends Controller
                 'subject_id' => $request->subject_id,
             ]);
 
-            // إضافة أيام الأسبوع للسلسلة
+            // إضافة أيام الأسبوع للسلسلة — تحويل الرقم إلى اسم يوم (0=sunday ... 6=saturday)
+            $dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
             foreach ($request->days as $day) {
-                $series->days()->create(['day_of_week' => $day]);
+                $series->days()->create(['day_of_week' => $dayNames[(int) $day]]);
             }
 
             // توليد المحاضرات باستخدام Service
@@ -3388,24 +3424,27 @@ class AdminController extends Controller
     /**
      * حساب معدل الحضور العام
      */
-    private function getOverallAttendanceRate()
+    private function getOverallAttendanceRate(): float
     {
-        $totalLectures = Lecture::whereMonth('date', now()->month)->count();
-        if ($totalLectures === 0) {
+        $month = now()->format('Y-m');
+
+        // استعلام واحد بدل 3: JOIN بين attendance و lectures
+        $result = DB::selectOne("
+            SELECT
+                COUNT(DISTINCT l.id) as total_lectures,
+                COUNT(DISTINCT s.id) as total_students,
+                SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_count
+            FROM lectures l
+            CROSS JOIN students s
+            LEFT JOIN attendance a ON a.lecture_id = l.id AND a.student_id = s.id
+            WHERE DATE_FORMAT(l.date, '%Y-%m') = ?
+        ", [$month]);
+
+        $expected = ($result->total_lectures ?? 0) * ($result->total_students ?? 0);
+        if ($expected === 0) {
             return 0;
         }
 
-        $totalStudents      = Student::count();
-        $expectedAttendance = $totalLectures * $totalStudents;
-
-        if ($expectedAttendance === 0) {
-            return 0;
-        }
-
-        $actualAttendance = Attendance::present()->whereHas('lecture', function ($q) {
-            $q->whereMonth('date', now()->month);
-        })->count();
-
-        return round(($actualAttendance / $expectedAttendance) * 100, 2);
+        return round((($result->present_count ?? 0) / $expected) * 100, 2);
     }
 }
