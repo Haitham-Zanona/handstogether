@@ -71,6 +71,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/admissions/groups', [AdmissionController::class, 'getGroups'])->name('admissions.groups');
         Route::get('/admissions/quick-search', [AdmissionController::class, 'quickSearch'])->name('admissions.quick-search');
 
+        // رقم الطلب التالي (توليد تلقائي)
+        Route::get('/admissions/next-number', [AdmissionController::class, 'getNextApplicationNumber'])->name('admissions.next-number');
+
         // التحقق من البيانات
         Route::post('/admissions/check-application-number', [AdmissionController::class, 'checkApplicationNumber'])->name('admissions.check-application-number');
         Route::post('/admissions/check-name-duplication', [AdmissionController::class, 'checkNameDuplication'])->name('admissions.check-name-duplication');

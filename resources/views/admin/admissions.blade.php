@@ -230,14 +230,8 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
         padding-left: 2.5rem;
     }
 
-    #application_number.valid {
-        border-color: #10b981;
-        background-color: #f0fdf4;
-    }
-
-    #application_number.invalid {
-        border-color: #ef4444;
-        background-color: #fef2f2;
+    #application_number {
+        letter-spacing: 0.15em;
     }
 
     .loading-spinner {
@@ -502,18 +496,21 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 
                         <div>
                             <label class="block mb-2 text-sm font-medium">رقم الطلب</label>
-                            <input type="text" name="application_number" id="application_number"
-                                class="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                                placeholder="0000" required>
-                            <div id="success-message-app-number" class="mt-1 text-sm text-green-600"
-                                style="display: none;">
-                                ✓ رقم الطلب متاح ويمكن استخدامه
+                            <div class="relative">
+                                <input type="text" id="application_number"
+                                    class="w-full px-3 py-2 bg-gray-100 text-black border border-gray-300 rounded-md cursor-not-allowed font-mono text-center text-lg font-bold"
+                                    placeholder="جاري التحميل..." readonly>
+                                <div id="app-number-loading" class="absolute left-3 top-1/2 -translate-y-1/2 hidden">
+                                    <svg class="animate-spin h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.568 3 7.291l3-2.291z"></path>
+                                    </svg>
+                                </div>
                             </div>
-                            <div id="checking-message-app-number" class="mt-1 text-sm text-yellow-600"
-                                style="display: none;">
-                                🔄 جاري التحقق من توفر الرقم...
+                            <div id="app-number-warning" class="mt-1 text-sm text-yellow-700 bg-yellow-50 border border-yellow-300 rounded px-2 py-1 hidden">
+                                ⚠️ تحذير: اقتربت من الحد الأقصى لأرقام الطلبات، المتبقي: <span id="app-number-remaining"></span> رقم
                             </div>
-                            <div class="error-message">يرجى إدخال رقم الطلب</div>
+                            <p class="mt-1 text-xs text-gray-500">يُولَّد تلقائياً عند الحفظ</p>
                         </div>
                     </div>
                 </div>
@@ -1299,6 +1296,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
             const modal = document.getElementById('add-admission-modal');
             if (modal) {
                 modal.classList.remove('hidden');
+                fetchNextApplicationNumber();
             }
         }
 
@@ -1374,63 +1372,67 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
         function clearApplicationNumberValidation() {
             const appNumberField = document.getElementById('application_number');
             if (appNumberField) {
-                appNumberField.classList.remove('valid', 'invalid');
-                hideApplicationNumberMessages();
+                appNumberField.value = '';
+                appNumberField.placeholder = 'جاري التحميل...';
+            }
+            document.getElementById('app-number-warning')?.classList.add('hidden');
+        }
+
+        // ==================== جلب رقم الطلب التالي تلقائياً ====================
+        async function fetchNextApplicationNumber() {
+            const field = document.getElementById('application_number');
+            const loading = document.getElementById('app-number-loading');
+            const warningDiv = document.getElementById('app-number-warning');
+            const remainingSpan = document.getElementById('app-number-remaining');
+
+            if (!field) return;
+
+            field.value = '';
+            field.placeholder = 'جاري التحميل...';
+            loading?.classList.remove('hidden');
+            warningDiv?.classList.add('hidden');
+
+            try {
+                const response = await fetch("{{ route('admin.admissions.next-number') }}", {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    field.value = data.next_number;
+                    field.placeholder = '0000';
+
+                    if (data.warning) {
+                        if (remainingSpan) remainingSpan.textContent = data.remaining;
+                        warningDiv?.classList.remove('hidden');
+                    }
+                } else {
+                    field.placeholder = 'خطأ في التحميل';
+                    showNotification(data.message || 'حدث خطأ في توليد رقم الطلب', 'error');
+                }
+            } catch (error) {
+                field.placeholder = 'خطأ في الاتصال';
+                console.error('خطأ في جلب رقم الطلب:', error);
+            } finally {
+                loading?.classList.add('hidden');
             }
         }
 
-        // ==================== التحقق من رقم الطلب ====================
-        function handleApplicationNumberInput(e) {
-            let value = e.target.value;
-            value = value.replace(/[^0-9]/g, '');
-            if (value.length > 4) {
-                value = value.substring(0, 4);
-            }
-            e.target.value = value;
-            hideApplicationNumberMessages();
-            e.target.classList.remove('valid', 'invalid');
-        }
-
-        function handleApplicationNumberBlur(e) {
-            let value = e.target.value;
-            if (value.length > 0 && value.length < 4) {
-                value = value.padStart(4, '0');
-                e.target.value = value;
-            }
-            if (value.length === 4) {
-                validateApplicationNumber(value);
-            }
-        }
-
-        function handleApplicationNumberKeyPress(e) {
-            const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'Home', 'End', 'ArrowLeft', 'ArrowRight'];
-            if (allowedKeys.includes(e.key)) {
-                return true;
-            }
-            if (!/[0-9]/.test(e.key)) {
-                e.preventDefault();
-                return false;
-            }
-        }
+        // (دوال التحقق اليدوي أُزيلت - رقم الطلب يُولَّد تلقائياً)
 
         async function validateApplicationNumber(number) {
+            // لم تعد مستخدمة - محتفظ بها للتوافق فقط
             if (isCheckingApplicationNumber) return;
 
             const appNumberField = document.getElementById('application_number');
             if (!appNumberField) return;
 
             isCheckingApplicationNumber = true;
-            hideApplicationNumberMessages();
-            showCheckingMessage();
-
-            const numValue = parseInt(number);
-            if (numValue > 1000) {
-                showApplicationNumberError('رقم الطلب يجب أن يكون بين 0000 و 1000');
-                appNumberField.classList.add('invalid');
-                appNumberField.classList.remove('valid');
-                isCheckingApplicationNumber = false;
-                return;
-            }
 
             try {
                 const isAvailable = await checkApplicationNumberInDatabase(number);
@@ -1480,92 +1482,8 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
             }
         }
 
-        // function showApplicationNumberError(message) {
-        //     hideApplicationNumberMessages();
-        //     const appNumberField = document.getElementById('application_number');
-        //     const errorDiv = appNumberField?.nextElementSibling;
-        //     if (errorDiv && errorDiv.classList.contains('error-message')) {
-        //         errorDiv.textContent = message;
-        //         errorDiv.style.display = 'block';
-        //     }
-        // }
-
-        function showApplicationNumberError(message) {
-            hideApplicationNumberMessages();
-
-            // البحث عن div رسالة الخطأ بطريقة مختلفة
-            const appNumberField = document.getElementById('application_number');
-
-            if (appNumberField) {
-            // البحث عن div الخطأ اللي جاي بعد الحقل مباشرة
-            let errorDiv = appNumberField.nextElementSibling;
-
-            // إذا ما لقاش، دور في كل العناصر اللي بعده
-            while (errorDiv && !errorDiv.classList.contains('error-message')) {
-            errorDiv = errorDiv.nextElementSibling;
-            }
-
-            // إذا لسه ما لقاش، دور في كل الصفحة
-            if (!errorDiv) {
-            const allErrorDivs = document.querySelectorAll('.error-message');
-            allErrorDivs.forEach(div => {
-            if (div.closest('div').querySelector('#application_number')) {
-            errorDiv = div;
-            }
-            });
-            }
-
-            if (errorDiv && errorDiv.classList.contains('error-message')) {
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            errorDiv.style.color = '#ef4444';
-            console.log('✅ تم إظهار رسالة الخطأ:', message);
-            } else {
-            console.warn('❌ لم يتم العثور على div رسالة الخطأ');
-            // إنشاء رسالة خطأ مؤقتة إذا ما لقاش الـ div
-            const tempError = document.createElement('div');
-            tempError.style.cssText = 'color: #ef4444; font-size: 12px; margin-top: 4px;';
-            tempError.textContent = message;
-            appNumberField.parentNode.appendChild(tempError);
-
-            setTimeout(() => tempError.remove(), 5000);
-            }
-            }
-        }
-
-        function showApplicationNumberSuccess() {
-            hideApplicationNumberMessages();
-            const successDiv = document.getElementById('success-message-app-number');
-            if (successDiv) {
-                successDiv.style.display = 'block';
-            }
-        }
-
-        function showCheckingMessage() {
-            hideApplicationNumberMessages();
-            const checkingDiv = document.getElementById('checking-message-app-number');
-            if (checkingDiv) {
-                checkingDiv.innerHTML = '<span class="loading-spinner"></span> جاري التحقق من توفر الرقم...';
-                checkingDiv.style.display = 'block';
-            }
-        }
-
         function hideApplicationNumberMessages() {
-            const appNumberField = document.getElementById('application_number');
-            const errorDiv = appNumberField?.nextElementSibling;
-            if (errorDiv && errorDiv.classList.contains('error-message')) {
-                errorDiv.style.display = 'none';
-            }
-
-            const successDiv = document.getElementById('success-message-app-number');
-            if (successDiv) {
-                successDiv.style.display = 'none';
-            }
-
-            const checkingDiv = document.getElementById('checking-message-app-number');
-            if (checkingDiv) {
-                checkingDiv.style.display = 'none';
-            }
+            document.getElementById('app-number-warning')?.classList.add('hidden');
         }
 
         // ==================== معالجة إرسال النموذج ====================
@@ -1598,6 +1516,10 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 
                     if (response.ok && result.success) {
                         clearFormErrors();
+                        // تحديث رقم الطلب الفعلي من استجابة الخادم
+                        if (result.admission?.application_number) {
+                            savedAdmissionData.application_number = result.admission.application_number;
+                        }
                         showNotification('تم حفظ البيانات بنجاح!', 'success');
                         closeAddAdmissionModal();
                         showSuccessModal();
@@ -2003,12 +1925,6 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
             });
         }
 
-        const appNumberField = document.getElementById('application_number');
-        if (appNumberField) {
-            appNumberField.addEventListener('input', handleApplicationNumberInput);
-            appNumberField.addEventListener('blur', handleApplicationNumberBlur);
-            appNumberField.addEventListener('keypress', handleApplicationNumberKeyPress);
-        }
 
         const studentIdField = document.getElementById('student_id');
         if (studentIdField) {

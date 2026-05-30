@@ -299,6 +299,27 @@ class AdmissionController extends Controller
 
     }
 
+    public function getNextApplicationNumber()
+    {
+        try {
+            $nextNumber = Admission::generateApplicationNumber();
+            $nextInt    = intval($nextNumber);
+            $remaining  = 9999 - $nextInt;
+
+            return response()->json([
+                'success'     => true,
+                'next_number' => $nextNumber,
+                'warning'     => $remaining <= 50,
+                'remaining'   => $remaining,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
     /**
      * موافقة على طلب الانتساب
      */

@@ -18,10 +18,8 @@ class AdmissionService
     public function createAdmission(array $data): Admission
     {
         return DB::transaction(function () use ($data) {
-            // توليد رقم الطلب إذا لم يكن موجوداً
-            if (empty($data['application_number'])) {
-                $data['application_number'] = Admission::generateApplicationNumber();
-            }
+            // رقم الطلب يُولَّد دائماً من الخادم في boot() creating hook
+            unset($data['application_number']);
 
             $admission = Admission::create($data);
 

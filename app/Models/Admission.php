@@ -180,15 +180,16 @@ class Admission extends Model
 
     public static function generateApplicationNumber(): string
     {
-        $prefix     = 'ADM';
-        $year       = now()->year;
-        $lastNumber = self::whereYear('created_at', $year)
-            ->where('application_number', 'like', "{$prefix}{$year}%")
-            ->count();
+        $lastNumber = self::whereRaw("application_number REGEXP '^[0-9]{4}$'")
+            ->max('application_number');
 
-        $newNumber = $lastNumber + 1;
+        $nextNumber = $lastNumber === null ? 0 : (intval($lastNumber) + 1);
 
-        return $prefix . $year . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+        if ($nextNumber > 9999) {
+            throw new \Exception('تم الوصول إلى الحد الأقصى لأرقام الطلبات (9999). يرجى التواصل مع الدعم الفني.');
+        }
+
+        return str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     public function convertToStudent(?int $groupId = null, ?int $approvedBy = null): Student
@@ -373,10 +374,7 @@ class Admission extends Model
         parent::boot();
 
         static::creating(function ($admission) {
-            // توليد رقم الطلب إذا لم يكن موجوداً
-            if (empty($admission->application_number)) {
-                $admission->application_number = self::generateApplicationNumber();
-            }
+            $admission->application_number = self::generateApplicationNumber();
 
             // تعيين قيم افتراضية للتوافق
             if (empty($admission->phone) && ! empty($admission->father_phone)) {
