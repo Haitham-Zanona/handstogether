@@ -1,6 +1,17 @@
 .git
+.github
 node_modules
 vendor
 .env
 .env.*
 storage/logs
+storage/framework/sessions
+storage/framework/cache
+storage/framework/views
+tests
+*.md
+.dockerignore
+.gitignore
+.editorconfig
+phpunit.xml
+vite.config.js.timestamp*

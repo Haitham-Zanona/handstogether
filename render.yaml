@@ -1,0 +1,73 @@
+services:
+  - type: web
+    name: handstogether
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      # ── Application ──────────────────────────────────────────────────────
+      - key: APP_NAME
+        value: "Hands Together Academy"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_LOCALE
+        value: ar
+      - key: APP_FALLBACK_LOCALE
+        value: en
+
+      # ── Set manually in Render dashboard after first deploy ───────────────
+      - key: APP_KEY
+        sync: false   # paste your existing key: base64:PjaxY9GtV3c6...
+      - key: APP_URL
+        sync: false   # e.g. https://handstogether.onrender.com
+
+      # ── Database (auto-injected from the PostgreSQL instance below) ───────
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: handstogether-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: handstogether-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: handstogether-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: handstogether-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: handstogether-db
+          property: password
+
+      # ── Session & Cache (database driver — tables already in migrations) ──
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_LIFETIME
+        value: "120"
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync
+
+      # ── Logging (stderr → visible in Render log viewer) ───────────────────
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: error
+
+      # ── Security ──────────────────────────────────────────────────────────
+      - key: BCRYPT_ROUNDS
+        value: "12"
+
+databases:
+  - name: handstogether-db
+    databaseName: handstogether
+    plan: free
