@@ -4,6 +4,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Contact;
+use App\Services\SocialMediaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -11,9 +12,10 @@ use Illuminate\Support\Facades\Validator;
 
 class HomeController extends Controller
 {
-    public function index()
+    public function index(SocialMediaService $social)
     {
-        return view('public.home');
+        $socialPosts = $social->getCachedPosts();
+        return view('public.home', compact('socialPosts'));
     }
 
     public function about()

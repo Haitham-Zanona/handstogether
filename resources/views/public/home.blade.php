@@ -205,6 +205,9 @@
     </div>
 </section>
 
+<!-- Social Media Feed -->
+<x-social-feed :posts="$socialPosts ?? []" />
+
 <!-- Call to Action -->
 <section class="py-20 text-white bg-gradient-to-r from-blue-500 to-blue-700" dir="rtl">
     <div class="px-4 mx-auto text-center max-w-7xl sm:px-6 lg:px-8">
