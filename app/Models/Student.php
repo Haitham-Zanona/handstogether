@@ -76,7 +76,7 @@ class Student extends Model
 
         return $this->attendance()
             ->whereHas('lecture', function ($query) use ($month) {
-                $query->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month]);
+                $query->whereYear('date', substr($month, 0, 4))->whereMonth('date', (int) substr($month, 5, 2));
             })
             ->with('lecture')
             ->get()

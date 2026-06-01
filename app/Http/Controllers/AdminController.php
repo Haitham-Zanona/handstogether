@@ -1473,7 +1473,7 @@ class AdminController extends Controller
             $groupId = $request->get('group_id');
 
             // Lectures for this month that are not cancelled and already past/today
-            $lectureIds = Lecture::whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month])
+            $lectureIds = Lecture::whereYear('date', substr($month, 0, 4))->whereMonth('date', (int) substr($month, 5, 2))
                 ->whereNotIn('status', ['cancelled'])
                 ->where('date', '<=', today())
                 ->pluck('id');
@@ -1552,7 +1552,7 @@ class AdminController extends Controller
             $month   = $request->get('month', now()->format('Y-m'));
             $student = Student::with('user')->findOrFail($studentId);
 
-            $lectures = Lecture::whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month])
+            $lectures = Lecture::whereYear('date', substr($month, 0, 4))->whereMonth('date', (int) substr($month, 5, 2))
                 ->where('group_id', $student->group_id)
                 ->whereNotIn('status', ['cancelled'])
                 ->orderBy('date')
@@ -2390,8 +2390,8 @@ class AdminController extends Controller
                 ],
 
                 'month' => [
-                    'total'    => Lecture::whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$thisMonth])->count(),
-                    'teachers' => Lecture::whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$thisMonth])
+                    'total'    => Lecture::whereYear('date', substr($thisMonth, 0, 4))->whereMonth('date', (int) substr($thisMonth, 5, 2))->count(),
+                    'teachers' => Lecture::whereYear('date', substr($thisMonth, 0, 4))->whereMonth('date', (int) substr($thisMonth, 5, 2))
                         ->with('teacher')
                         ->get()
                         ->pluck('teacher.id')
@@ -3429,6 +3429,9 @@ class AdminController extends Controller
         $month = now()->format('Y-m');
 
         // استعلام واحد بدل 3: JOIN بين attendance و lectures
+        $start = now()->startOfMonth()->format('Y-m-d');
+        $end   = now()->endOfMonth()->format('Y-m-d');
+
         $result = DB::selectOne("
             SELECT
                 COUNT(DISTINCT l.id) as total_lectures,
@@ -3437,8 +3440,8 @@ class AdminController extends Controller
             FROM lectures l
             CROSS JOIN students s
             LEFT JOIN attendance a ON a.lecture_id = l.id AND a.student_id = s.id
-            WHERE DATE_FORMAT(l.date, '%Y-%m') = ?
-        ", [$month]);
+            WHERE l.date BETWEEN ? AND ?
+        ", [$start, $end]);
 
         $expected = ($result->total_lectures ?? 0) * ($result->total_students ?? 0);
         if ($expected === 0) {

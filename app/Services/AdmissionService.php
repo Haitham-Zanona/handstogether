@@ -259,8 +259,8 @@ class AdmissionService
     private function getMonthlyTrend(): array
     {
         return Admission::select(
-            DB::raw('YEAR(created_at) as year'),
-            DB::raw('MONTH(created_at) as month'),
+            DB::raw('EXTRACT(YEAR FROM created_at) as year'),
+            DB::raw('EXTRACT(MONTH FROM created_at) as month'),
             DB::raw('COUNT(*) as count')
         )
             ->where('created_at', '>=', now()->subMonths(6))

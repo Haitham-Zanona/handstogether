@@ -234,7 +234,7 @@ class TeacherController extends Controller
         // ── إجمالي المحاضرات ──
         $lectures = $teacher->lectures()
             ->with('group')
-            ->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month])
+            ->whereYear('date', substr($month, 0, 4))->whereMonth('date', (int) substr($month, 5, 2))
             ->get();
 
         $lectureIds = $lectures->pluck('id');
@@ -334,7 +334,7 @@ class TeacherController extends Controller
         if ($request->type)       $query->where('type', $request->type);
         if ($request->status)     $query->where('status', $request->status);
         if ($request->month) {
-            $query->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$request->month]);
+            $query->whereYear('date', substr($request->month, 0, 4))->whereMonth('date', (int) substr($request->month, 5, 2));
         }
 
         $lectures = $query->orderByDesc('date')->orderByDesc('start_time')->get()->map(fn ($l) => [
@@ -519,7 +519,7 @@ class TeacherController extends Controller
 
         $totalExpected = Attendance::whereHas('lecture', function ($q) use ($teacherId, $month) {
             $q->where('teacher_id', $teacherId)
-                ->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month]);
+                ->whereYear('date', substr($month, 0, 4))->whereMonth('date', (int) substr($month, 5, 2));
         })->count();
 
         if ($totalExpected === 0) {
@@ -528,7 +528,7 @@ class TeacherController extends Controller
 
         $presentCount = Attendance::present()->whereHas('lecture', function ($q) use ($teacherId, $month) {
             $q->where('teacher_id', $teacherId)
-                ->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month]);
+                ->whereYear('date', substr($month, 0, 4))->whereMonth('date', (int) substr($month, 5, 2));
         })->count();
 
         return round(($presentCount / $totalExpected) * 100, 2);

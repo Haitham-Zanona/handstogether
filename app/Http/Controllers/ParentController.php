@@ -187,8 +187,8 @@ class ParentController extends Controller
             FROM attendance a
             INNER JOIN lectures l ON l.id = a.lecture_id
             WHERE a.student_id IN (" . implode(',', $childIds->toArray()) . ")
-            AND DATE_FORMAT(l.date, '%Y-%m') = ?
-        ", [$month]);
+            AND l.date BETWEEN ? AND ?
+        ", [substr($month, 0, 7) . '-01', date('Y-m-t', strtotime(substr($month, 0, 7) . '-01'))]);
 
         $total = $result->total ?? 0;
         return $total > 0 ? round((($result->present_count ?? 0) / $total) * 100, 2) : 0;
