@@ -17,6 +17,5 @@ php artisan view:cache
 echo "▶ Creating storage symlink..."
 php artisan storage:link || true
 
-echo "▶ Starting Nginx + PHP-FPM..."
-/opt/docker/bin/service.d/nginx/run &
-/opt/docker/bin/service.d/php-fpm/run
+echo "▶ Starting Nginx + PHP-FPM via Supervisor..."
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/app.conf

@@ -4,37 +4,49 @@ FROM node:20-alpine AS assets
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
-
 COPY . .
 RUN npm run build
 
-# ─── Stage 2: Production PHP + Nginx ──────────────────────────────────────
-FROM webdevops/php-nginx:8.3-alpine
+# ─── Stage 2: Production (PHP-FPM + Nginx + Supervisor) ───────────────────
+FROM php:8.3-fpm-alpine
 
-# PostgreSQL PHP extension
-RUN apk add --no-cache libpq-dev \
- && docker-php-ext-install pdo_pgsql pgsql \
- && apk del libpq-dev
+# System packages + PHP extensions
+RUN apk add --no-cache \
+        nginx \
+        supervisor \
+        libpq \
+    && apk add --no-cache --virtual .build-deps \
+        libpq-dev \
+    && docker-php-ext-install pdo_pgsql pdo_mysql opcache \
+    && apk del .build-deps \
+    && mkdir -p /var/log/supervisor /run/nginx /var/log/nginx
+
+# Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Install PHP dependencies (cached layer — only rebuilds when composer files change)
+# PHP dependencies (layer-cached)
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
 
-# Copy application code
+# Application code
 COPY . .
 
-# Copy built assets from Stage 1 (not in git, so must come from build)
+# Built assets from Stage 1
 COPY --from=assets /app/public/build ./public/build
 
-# Run post-install scripts + fix permissions
+# Finalize
 RUN composer run-script post-autoload-dump || true \
- && chown -R application:application /app \
+ && mkdir -p storage/framework/sessions \
+             storage/framework/views \
+             storage/framework/cache/data \
+ && chown -R www-data:www-data /app \
  && chmod -R 775 /app/storage /app/bootstrap/cache
 
-COPY ./render/nginx.conf /opt/docker/etc/nginx/vhost.conf
-COPY ./render/start.sh /start.sh
+COPY ./render/nginx.conf  /etc/nginx/http.d/default.conf
+COPY ./render/supervisord.conf /etc/supervisor/conf.d/app.conf
+COPY ./render/start.sh    /start.sh
 RUN chmod +x /start.sh
 
 EXPOSE 80
