@@ -17,7 +17,8 @@ RUN apk add --no-cache \
         libpq \
     && apk add --no-cache --virtual .build-deps \
         libpq-dev \
-    && docker-php-ext-install pdo_pgsql pdo_mysql opcache \
+    && docker-php-ext-install pdo_pgsql pdo_mysql \
+    && docker-php-ext-enable opcache \
     && apk del .build-deps \
     && mkdir -p /var/log/supervisor /run/nginx /var/log/nginx
 
