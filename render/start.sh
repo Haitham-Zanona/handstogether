@@ -4,7 +4,7 @@ set -e
 echo "▶ Clearing stale caches..."
 php artisan config:clear
 php artisan route:clear
-php artisan view:clear
+php artisan view:clear || true
 
 echo "▶ Running database migrations..."
 php artisan migrate --force
