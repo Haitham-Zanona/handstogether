@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust Render's reverse proxy so Laravel detects HTTPS correctly
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'role'                  => \App\Http\Middleware\CheckRole::class,
             'admission.permissions' => \App\Http\Middleware\CheckAdmissionPermissions::class,
