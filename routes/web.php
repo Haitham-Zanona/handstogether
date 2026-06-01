@@ -87,8 +87,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('statistics', [AdmissionController::class, 'statistics'])->name('statistics');
             // تصدير البيانات
             Route::get('export', [AdmissionController::class, 'export'])->name('export');
-            // البحث السريع
-            Route::get('quick-search', [AdmissionController::class, 'quickSearch'])->name('quick-search');
             // التحقق من توفر رقم الهوية
             Route::post('check-id-availability', [AdmissionController::class, 'checkIdAvailability'])->name('check-id');
         });
