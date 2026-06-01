@@ -9,11 +9,15 @@ use Illuminate\Support\Facades\Validator;
 
 class CreateAdminCommand extends Command
 {
-    protected $signature   = 'admin:create';
-    protected $description = 'إنشاء حساب مشرف جديد أو تحديث مشرف موجود (تفاعلي)';
+    protected $signature   = 'admin:create {--from-env : Create admin silently from ADMIN_* environment variables}';
+    protected $description = 'إنشاء حساب مشرف جديد أو تحديث مشرف موجود (تفاعلي أو من متغيرات البيئة)';
 
     public function handle(): int
     {
+        if ($this->option('from-env')) {
+            return $this->handleFromEnv();
+        }
+
         $this->info('');
         $this->info('══════════════════════════════════════');
         $this->info('     إنشاء حساب المشرف - الأكاديمية  ');
@@ -96,6 +100,39 @@ class CreateAdminCommand extends Command
         $this->warn('  لا تشارك كلمة المرور مع أحد ولا تحفظها في أي ملف نصي.');
         $this->info('');
 
+        return Command::SUCCESS;
+    }
+
+    // ── Non-interactive: reads from ADMIN_* env vars ─────────────────────
+
+    private function handleFromEnv(): int
+    {
+        $email    = env('ADMIN_EMAIL');
+        $name     = env('ADMIN_NAME');
+        $password = env('ADMIN_PASSWORD');
+        $phone    = env('ADMIN_PHONE');
+
+        if (empty($email) || empty($name) || empty($password)) {
+            $this->warn('admin:create --from-env skipped: ADMIN_EMAIL, ADMIN_NAME, or ADMIN_PASSWORD not set.');
+            return Command::SUCCESS;
+        }
+
+        // Skip if admin already exists with this email
+        if (User::where('email', $email)->where('role', 'admin')->exists()) {
+            $this->info("Admin already exists: {$email} — skipped.");
+            return Command::SUCCESS;
+        }
+
+        User::create([
+            'name'      => $name,
+            'email'     => $email,
+            'password'  => Hash::make($password),
+            'role'      => 'admin',
+            'phone'     => $phone ?: null,
+            'is_active' => true,
+        ]);
+
+        $this->info("✓ Admin created from environment variables: {$email}");
         return Command::SUCCESS;
     }
 

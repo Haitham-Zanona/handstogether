@@ -17,5 +17,8 @@ php artisan view:cache
 echo "▶ Creating storage symlink..."
 php artisan storage:link || true
 
+echo "▶ Creating admin account (if not exists)..."
+php artisan admin:create --from-env || true
+
 echo "▶ Starting Nginx + PHP-FPM via Supervisor..."
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/app.conf
