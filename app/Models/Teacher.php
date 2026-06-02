@@ -18,6 +18,11 @@ class Teacher extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function attendances()
+    {
+        return $this->hasMany(TeacherAttendance::class);
+    }
+
     public function lectures()
     {
         return $this->hasMany(Lecture::class);

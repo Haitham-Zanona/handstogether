@@ -243,6 +243,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/staff/{teacher}', [AdminController::class, 'updateTeacher'])->name('staff.update');
         Route::delete('/staff/{teacher}', [AdminController::class, 'destroyTeacher'])->name('staff.destroy');
 
+        // ========== حضور وغياب المدرسين ==========
+        Route::get('/teacher-attendance', [AdminController::class, 'teacherAttendance'])->name('teacher-attendance');
+        Route::get('/teacher-attendance/data', [AdminController::class, 'getTeacherAttendanceData'])->name('teacher-attendance.data');
+        Route::post('/teacher-attendance/save', [AdminController::class, 'saveTeacherAttendance'])->name('teacher-attendance.save');
+        Route::post('/teacher-attendance/save-one', [AdminController::class, 'saveOneTeacherAttendance'])->name('teacher-attendance.save-one');
+
         // Settings Routes
         // شكاوي وطلبات أولياء الأمور
         Route::get('/messages', [AdminController::class, 'parentMessages'])->name('messages');

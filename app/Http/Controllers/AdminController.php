@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Admission;
 use App\Models\Attendance;
+use App\Models\TeacherAttendance;
 use App\Models\Group;
 use App\Models\GroupSubject;
 use App\Models\Lecture;
@@ -3449,5 +3450,186 @@ class AdminController extends Controller
         }
 
         return round((($result->present_count ?? 0) / $expected) * 100, 2);
+    }
+
+    // ========== حضور وغياب المدرسين ==========
+
+    public function teacherAttendance()
+    {
+        return view('admin.teacher-attendance');
+    }
+
+    public function getTeacherAttendanceData(Request $request)
+    {
+        $date = $request->get('date', today()->toDateString());
+        $month = $request->get('month');
+
+        $teachers = Teacher::with(['user:id,name,national_id,is_active'])
+            ->whereHas('user', fn($q) => $q->where('is_active', true))
+            ->get();
+
+        if ($month) {
+            [$year, $mon] = explode('-', $month);
+            $attendanceRecords = TeacherAttendance::whereYear('date', $year)
+                ->whereMonth('date', $mon)
+                ->get()
+                ->groupBy('teacher_id');
+
+            $daysInMonth = cal_days_in_month(CAL_GREGORIAN, (int)$mon, (int)$year);
+            $workDays = $this->countWorkDays((int)$year, (int)$mon);
+
+            $data = $teachers->map(function ($teacher) use ($attendanceRecords, $workDays) {
+                $records = $attendanceRecords->get($teacher->id, collect());
+                return [
+                    'id'          => $teacher->id,
+                    'name'        => $teacher->user->name ?? '—',
+                    'national_id' => $teacher->user->national_id ?? '—',
+                    'present'     => $records->where('status', 'present')->count(),
+                    'absent'      => $records->where('status', 'absent')->count(),
+                    'late'        => $records->where('status', 'late')->count(),
+                    'excuse'      => $records->where('status', 'excuse')->count(),
+                    'work_days'   => $workDays,
+                    'rate'        => $workDays > 0
+                        ? round(($records->whereIn('status', ['present', 'late'])->count() / $workDays) * 100)
+                        : 0,
+                ];
+            });
+
+            return response()->json(['success' => true, 'mode' => 'month', 'data' => $data]);
+        }
+
+        $existing = TeacherAttendance::whereDate('date', $date)
+            ->get()
+            ->keyBy('teacher_id');
+
+        $data = $teachers->map(function ($teacher) use ($existing) {
+            $rec = $existing->get($teacher->id);
+            return [
+                'id'             => $teacher->id,
+                'name'           => $teacher->user->name ?? '—',
+                'national_id'    => $teacher->user->national_id ?? '—',
+                'status'         => $rec?->status ?? null,
+                'check_in_time'  => $rec?->check_in_time ?? null,
+                'notes'          => $rec?->notes ?? null,
+                'attendance_id'  => $rec?->id ?? null,
+            ];
+        });
+
+        $stats = [
+            'total'   => $teachers->count(),
+            'present' => $existing->where('status', 'present')->count(),
+            'absent'  => $existing->where('status', 'absent')->count(),
+            'late'    => $existing->where('status', 'late')->count(),
+            'excuse'  => $existing->where('status', 'excuse')->count(),
+            'unmarked'=> $teachers->count() - $existing->count(),
+        ];
+
+        return response()->json(['success' => true, 'mode' => 'day', 'data' => $data, 'stats' => $stats]);
+    }
+
+    public function saveTeacherAttendance(Request $request)
+    {
+        $validated = $request->validate([
+            'date'       => 'required|date',
+            'records'    => 'required|array',
+            'records.*.teacher_id'   => 'required|exists:teachers,id',
+            'records.*.status'       => 'required|in:present,absent,late,excuse',
+            'records.*.check_in_time'=> 'nullable|date_format:H:i',
+            'records.*.notes'        => 'nullable|string|max:500',
+        ]);
+
+        $adminId = Auth::id();
+        $date    = $validated['date'];
+
+        DB::transaction(function () use ($validated, $adminId, $date) {
+            foreach ($validated['records'] as $rec) {
+                TeacherAttendance::updateOrCreate(
+                    ['teacher_id' => $rec['teacher_id'], 'date' => $date],
+                    [
+                        'status'         => $rec['status'],
+                        'check_in_time'  => $rec['check_in_time'] ?? null,
+                        'notes'          => $rec['notes'] ?? null,
+                        'recorded_by'    => $adminId,
+                    ]
+                );
+            }
+        });
+
+        return response()->json(['success' => true, 'message' => 'تم حفظ سجل الحضور بنجاح']);
+    }
+
+    public function saveOneTeacherAttendance(Request $request)
+    {
+        $validated = $request->validate([
+            'teacher_id'   => 'required|exists:teachers,id',
+            'date'         => 'required|date',
+            'status'       => 'required|in:present,absent,late,excuse',
+            'check_in_time'=> 'nullable|date_format:H:i',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+
+        $record = TeacherAttendance::updateOrCreate(
+            ['teacher_id' => $validated['teacher_id'], 'date' => $validated['date']],
+            [
+                'status'         => $validated['status'],
+                'check_in_time'  => $validated['check_in_time'] ?? null,
+                'notes'          => $validated['notes'] ?? null,
+                'recorded_by'    => Auth::id(),
+            ]
+        );
+
+        return response()->json([
+            'success'       => true,
+            'message'       => 'تم تحديث الحضور',
+            'attendance_id' => $record->id,
+        ]);
+    }
+
+    public function getTeacherAttendanceSummary(Request $request)
+    {
+        $teacherId = $request->get('teacher_id');
+        $month     = $request->get('month', now()->format('Y-m'));
+        [$year, $mon] = explode('-', $month);
+
+        $query = TeacherAttendance::whereYear('date', $year)->whereMonth('date', $mon);
+
+        if ($teacherId) {
+            $query->where('teacher_id', $teacherId);
+        }
+
+        $records = $query->with('teacher.user:id,name')->get();
+
+        $workDays = $this->countWorkDays((int)$year, (int)$mon);
+
+        $summary = $records->groupBy('teacher_id')->map(function ($recs) use ($workDays) {
+            $teacher = $recs->first()->teacher;
+            return [
+                'teacher_id'   => $teacher->id,
+                'name'         => $teacher->user->name ?? '—',
+                'present'      => $recs->where('status', 'present')->count(),
+                'absent'       => $recs->where('status', 'absent')->count(),
+                'late'         => $recs->where('status', 'late')->count(),
+                'excuse'       => $recs->where('status', 'excuse')->count(),
+                'work_days'    => $workDays,
+                'rate'         => $workDays > 0
+                    ? round(($recs->whereIn('status', ['present', 'late'])->count() / $workDays) * 100)
+                    : 0,
+            ];
+        })->values();
+
+        return response()->json(['success' => true, 'summary' => $summary, 'work_days' => $workDays]);
+    }
+
+    private function countWorkDays(int $year, int $month): int
+    {
+        $days = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        $count = 0;
+        for ($d = 1; $d <= $days; $d++) {
+            $dow = date('N', mktime(0, 0, 0, $month, $d, $year));
+            if ($dow < 6) {
+                $count++;
+            }
+        }
+        return $count;
     }
 }

@@ -84,6 +84,14 @@
             إدارة العاملين
         </a>
 
+        <a href="{{ route('admin.teacher-attendance') }}"
+            class="flex items-center gap-3 px-4 py-2.5 mx-2 my-0.5 text-sm text-white rounded-lg transition-colors hover:bg-secondary {{ request()->routeIs('admin.teacher-attendance*') ? 'bg-secondary' : '' }}">
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+            حضور المدرسين
+        </a>
+
         <a href="{{ route('admin.grades.index') }}"
             class="flex items-center gap-3 px-4 py-2.5 mx-2 my-0.5 text-sm text-white rounded-lg transition-colors hover:bg-secondary {{ request()->routeIs('admin.grades*') ? 'bg-secondary' : '' }}">
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
