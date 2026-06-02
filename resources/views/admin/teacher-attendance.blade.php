@@ -116,7 +116,7 @@ $pageDescription = 'تسجيل ومتابعة حضور وغياب المدرسي
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
-                        <template x-for="(rec, idx) in dayRecords" :key="rec.id">
+                        <template x-for="rec in dayRecords" :key="rec.id">
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-3">
@@ -315,7 +315,7 @@ function teacherAttendanceManager() {
                 const d = await r.json();
                 if (d.success) {
                     this.monthRecords = d.data;
-                    this.workDays = d.data[0]?.work_days ?? 0;
+                    this.workDays = d.work_days ?? 0;
                 }
             } catch (_) {}
             finally { this.loadingMonth = false; }

@@ -79,11 +79,12 @@ class CreateAdminCommand extends Command
 
         // ── الحفظ ────────────────────────────────────────────────────────
         $data = [
-            'name'      => trim($name),
-            'password'  => Hash::make($password),
-            'role'      => 'admin',
-            'is_active' => true,
-            'phone'     => $phone ? trim($phone) : null,
+            'name'              => trim($name),
+            'password'          => Hash::make($password),
+            'role'              => 'admin',
+            'is_active'         => true,
+            'phone'             => $phone ? trim($phone) : null,
+            'email_verified_at' => now(),
         ];
 
         if ($existing) {
@@ -117,19 +118,20 @@ class CreateAdminCommand extends Command
             return Command::SUCCESS;
         }
 
-        // Skip if admin already exists with this email
-        if (User::where('email', $email)->where('role', 'admin')->exists()) {
-            $this->info("Admin already exists: {$email} — skipped.");
+        // Skip if any user already exists with this email (regardless of role)
+        if (User::where('email', $email)->exists()) {
+            $this->info("User already exists with this email: {$email} — skipped.");
             return Command::SUCCESS;
         }
 
         User::create([
-            'name'      => $name,
-            'email'     => $email,
-            'password'  => Hash::make($password),
-            'role'      => 'admin',
-            'phone'     => $phone ?: null,
-            'is_active' => true,
+            'name'              => $name,
+            'email'             => $email,
+            'password'          => Hash::make($password),
+            'role'              => 'admin',
+            'phone'             => $phone ?: null,
+            'is_active'         => true,
+            'email_verified_at' => now(),
         ]);
 
         $this->info("✓ Admin created from environment variables: {$email}");

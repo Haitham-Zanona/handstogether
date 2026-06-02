@@ -201,22 +201,24 @@ class Admission extends Model
         return DB::transaction(function () use ($groupId, $approvedBy) {
             $parentEmail = $this->generateUniqueEmail($this->parent_name, 'parent');
             $parent      = User::create([
-                'name'        => $this->formatted_parent_name,
-                'email'       => $parentEmail,
-                'password'    => Hash::make($this->father_phone ?: $this->phone),
-                'role'        => 'parent',
-                'phone'       => $this->father_phone ?: $this->phone,
-                'national_id' => $this->parent_id,
+                'name'              => $this->formatted_parent_name,
+                'email'             => $parentEmail,
+                'password'          => Hash::make($this->father_phone ?: $this->phone),
+                'role'              => 'parent',
+                'phone'             => $this->father_phone ?: $this->phone,
+                'national_id'       => $this->parent_id,
+                'email_verified_at' => now(),
             ]);
 
             $studentEmail = $this->generateUniqueEmail($this->student_name, 'student');
             $studentUser  = User::create([
-                'name'        => $this->formatted_student_name,
-                'email'       => $studentEmail,
-                'password'    => Hash::make($this->application_number),
-                'role'        => 'student',
-                'national_id' => $this->student_id,
-                'birth_date'  => $this->birth_date,
+                'name'              => $this->formatted_student_name,
+                'email'             => $studentEmail,
+                'password'          => Hash::make($this->application_number),
+                'role'              => 'student',
+                'national_id'       => $this->student_id,
+                'birth_date'        => $this->birth_date,
+                'email_verified_at' => now(),
             ]);
             // parent_id is not in $fillable to prevent mass-assignment via forms
             $studentUser->forceFill(['parent_id' => $parent->id])->save();
