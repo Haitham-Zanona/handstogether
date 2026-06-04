@@ -180,7 +180,7 @@ class Admission extends Model
 
     public static function generateApplicationNumber(): string
     {
-        $lastNumber = self::whereRaw("application_number REGEXP '^[0-9]{4}$'")
+        $lastNumber = self::whereRaw("application_number ~ '^[0-9]{4}$'")
             ->max('application_number');
 
         $nextNumber = $lastNumber === null ? 0 : (intval($lastNumber) + 1);
