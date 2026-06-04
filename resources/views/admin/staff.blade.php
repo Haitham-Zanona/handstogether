@@ -15,7 +15,7 @@ $pageDescription = 'إنشاء وإدارة حسابات المدرسين وال
 <div x-data="staffManager()" x-init="init()" class="space-y-6">
 
     {{-- Header --}}
-    <div class="flex items-center justify-end gap-3">
+    <div class="flex flex-wrap items-center justify-end gap-3">
         <button @click="openCreateEmployee()"
             class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -15,8 +15,8 @@ $pageDescription = 'متابعة حضور الطلاب وتسجيلاتهم';
 <div x-data="attendancePage()" x-init="loadData()" class="space-y-6">
 
     {{-- Filters --}}
-    <div class="bg-white rounded-lg shadow-sm border border-gray-100 px-6 py-4">
-        <div class="flex flex-wrap items-end gap-4">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-100 px-4 py-3 sm:px-6 sm:py-4">
+        <div class="flex flex-wrap items-end gap-3">
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">الشهر</label>
                 <input type="month" x-model="filters.month" @change="loadData()"
@@ -76,7 +76,7 @@ $pageDescription = 'متابعة حضور الطلاب وتسجيلاتهم';
 
     {{-- Tabs --}}
     <div class="bg-white rounded-lg shadow-sm border border-gray-100">
-        <div class="flex border-b border-gray-200 px-4">
+        <div class="flex border-b border-gray-200 px-4 overflow-x-auto">
             <button @click="activeTab = 'all'"
                 :class="activeTab === 'all' ? 'border-b-2 border-primary text-primary' : 'text-gray-500 hover:text-gray-700'"
                 class="px-4 py-3 text-sm font-medium transition">
@@ -112,32 +112,32 @@ $pageDescription = 'متابعة حضور الطلاب وتسجيلاتهم';
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">الطالب</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">المحاضرات</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">حاضر</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">متأخر</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">غائب</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">نسبة الحضور</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">إجراءات</th>
+                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase sm:px-6">الطالب</th>
+                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase sm:px-6">المحاضرات</th>
+                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase sm:px-6">حاضر</th>
+                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase sm:px-6">متأخر</th>
+                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase sm:px-6">غائب</th>
+                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase sm:px-6">نسبة الحضور</th>
+                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase sm:px-6">إجراءات</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-100">
                     <template x-for="s in displayedStudents" :key="s.id">
                         <tr class="hover:bg-gray-50 transition">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
+                            <td class="px-3 py-3 sm:px-6 sm:py-4">
+                                <div class="flex items-center gap-2 sm:gap-3">
                                     <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold shrink-0"
                                          x-text="s.name.charAt(0)"></div>
                                     <span class="font-medium text-gray-900 text-sm" x-text="s.name"></span>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-600" x-text="s.total_lectures"></td>
-                            <td class="px-6 py-4 text-sm text-green-600 font-medium" x-text="s.present"></td>
-                            <td class="px-6 py-4 text-sm text-yellow-600 font-medium" x-text="s.late"></td>
-                            <td class="px-6 py-4 text-sm text-red-600 font-medium" x-text="s.absent"></td>
-                            <td class="px-6 py-4">
+                            <td class="px-3 py-3 text-sm text-gray-600 sm:px-6 sm:py-4" x-text="s.total_lectures"></td>
+                            <td class="px-3 py-3 text-sm text-green-600 font-medium sm:px-6 sm:py-4" x-text="s.present"></td>
+                            <td class="px-3 py-3 text-sm text-yellow-600 font-medium sm:px-6 sm:py-4" x-text="s.late"></td>
+                            <td class="px-3 py-3 text-sm text-red-600 font-medium sm:px-6 sm:py-4" x-text="s.absent"></td>
+                            <td class="px-3 py-3 sm:px-6 sm:py-4">
                                 <div class="flex items-center gap-2">
-                                    <div class="flex-1 h-2 bg-gray-200 rounded-full min-w-16">
+                                    <div class="flex-1 h-2 bg-gray-200 rounded-full min-w-12 sm:min-w-16">
                                         <div class="h-2 rounded-full transition-all"
                                              :class="s.rate >= 75 ? 'bg-green-500' : s.rate >= 50 ? 'bg-yellow-400' : 'bg-red-500'"
                                              :style="'width:' + s.rate + '%'">
@@ -149,7 +149,7 @@ $pageDescription = 'متابعة حضور الطلاب وتسجيلاتهم';
                                     </span>
                                 </div>
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-3 py-3 sm:px-6 sm:py-4">
                                 <div class="flex items-center gap-2">
                                     <button @click="openDetail(s)"
                                         class="text-xs px-3 py-1.5 bg-blue-50 text-primary rounded-lg hover:bg-blue-100 transition">
@@ -198,7 +198,7 @@ $pageDescription = 'متابعة حضور الطلاب وتسجيلاتهم';
                 </div>
 
                 {{-- Modal records --}}
-                <div x-show="!modalLoading && modalRecords.length > 0">
+                <div x-show="!modalLoading && modalRecords.length > 0" class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 text-sm">
                         <thead>
                             <tr>

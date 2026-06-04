@@ -100,7 +100,7 @@ $pageDescription = 'إدارة الدفعات والسجلات المالية';
             </div>
 
             {{-- Stats Cards --}}
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 p-4 bg-gray-50 border-b border-gray-100">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 p-4 bg-gray-50 border-b border-gray-100">
                 <div class="bg-white rounded-lg p-3 text-center border border-gray-100 shadow-sm">
                     <p class="text-xl font-bold text-blue-700" x-text="stats.total_expected ?? '—'"></p>
                     <p class="text-xs text-gray-400 mt-0.5">المتوقع (ش.ج)</p>

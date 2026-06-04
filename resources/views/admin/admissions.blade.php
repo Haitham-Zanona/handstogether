@@ -306,14 +306,14 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 
 <!-- Admissions Table -->
 <div class="bg-white rounded-lg shadow">
-    <div class="px-6 py-4 bg-white border-b border-gray-200">
-        <div class="flex items-center justify-between">
+    <div class="px-4 py-4 bg-white border-b border-gray-200 sm:px-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
             <h3 class="text-lg font-medium text-gray-900">طلبات الانتساب</h3>
-            <div class="flex items-center space-x-3 space-x-reverse">
+            <div class="flex flex-wrap items-center gap-2">
                 <!-- البحث بالاسم مع زر -->
                 <div class="flex items-center">
                     <input type="text" id="nameSearch" placeholder="البحث بالاسم..."
-                        class="w-48 px-3 py-2 text-sm border border-gray-300 rounded-r-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        class="w-36 sm:w-48 px-3 py-2 text-sm border border-gray-300 rounded-r-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <button onclick="searchByName()"
                         class="px-3 py-2 text-sm transition-colors bg-gray-100 border border-r-0 border-gray-300 rounded-l-md hover:bg-gray-200">
                         🔍
@@ -338,14 +338,14 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 
                 <!-- زر الإضافة -->
                 <button onclick="openAddAdmissionModal()"
-                    class="px-4 py-2 mr-2 text-sm font-medium text-white transition-colors rounded-md bg-primary hover:bg-blue-700">
+                    class="px-4 py-2 text-sm font-medium text-white transition-colors rounded-md bg-primary hover:bg-blue-700 whitespace-nowrap">
                     إضافة طلب جديد
                 </button>
             </div>
         </div>
     </div>
 
-    <div>
+    <div class="overflow-x-auto">
         <table class="w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>

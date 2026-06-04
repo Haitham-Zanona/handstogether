@@ -82,7 +82,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
 </script>
 
 @section('content')
-<div class="min-h-screen p-6 bg-gray-50" x-data="groupsManager()" x-init="loadData()">
+<div class="space-y-6" x-data="groupsManager()" x-init="loadData()">
 
     <!-- Loading State -->
     <div x-show="loading" class="flex items-center justify-center p-8">
@@ -95,7 +95,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
     <!-- Content -->
     <div x-show="!loading" x-cloak>
         <!-- إحصائيات سريعة -->
-        <div class="grid grid-cols-1 gap-6 mb-8 md:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4 mb-6 md:grid-cols-4">
             <div class="p-6 bg-white border border-gray-100 shadow-sm rounded-xl">
                 <div class="flex items-center">
                     <div class="p-3 bg-blue-100 rounded-lg">
@@ -146,7 +146,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
         </div>
 
         <!-- أزرار الإجراءات الرئيسية -->
-        <div class="flex flex-wrap gap-4 mb-8">
+        <div class="flex flex-wrap gap-3 mb-6">
             <button @click="showCreateModal = true"
                 class="flex items-center gap-2 px-6 py-3 font-medium text-white transition-all duration-200 bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg">
                 <i class="fas fa-plus"></i>
@@ -167,8 +167,8 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
         </div>
 
         <!-- فلاتر البحث -->
-        <div class="p-6 mb-8 bg-white border border-gray-100 shadow-sm rounded-xl">
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div class="p-4 mb-6 bg-white border border-gray-100 shadow-sm rounded-xl sm:p-6">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
                 <div>
                     <label class="block mb-2 text-sm font-medium text-gray-700">البحث بالاسم</label>
                     <input type="text" x-model="searchTerm" placeholder="ابحث عن مجموعة..."
