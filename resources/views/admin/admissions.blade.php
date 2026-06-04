@@ -223,6 +223,9 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 
     /* تحسين القوائم المنسدلة */
     select {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
         background-position: left 0.5rem center;
         background-repeat: no-repeat;
@@ -740,6 +743,14 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                         @endforeach
                     </select>
                 </div>
+                <div class="mb-4">
+                    <label class="block mb-2 text-sm font-medium text-gray-700">حالة الدفع</label>
+                    <select name="payment_status" id="approve-payment-status"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary">
+                        <option value="paid" selected>تم الدفع (30 ₪)</option>
+                        <option value="exempt">إعفاء</option>
+                    </select>
+                </div>
                 <div class="flex items-center justify-between">
                     <button type="button" onclick="closeApproveModal()"
                         class="px-4 py-2 text-gray-700 bg-gray-300 rounded-md hover:bg-gray-400">
@@ -1209,6 +1220,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
 
         const formData = new FormData(this);
         const groupId = formData.get('group_id');
+        const paymentStatus = formData.get('payment_status') || 'paid';
 
         if (!groupId) {
         showNotification('يرجى اختيار المجموعة', 'warning');
@@ -1225,7 +1237,8 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
         'X-Requested-With': 'XMLHttpRequest'
         },
         body: JSON.stringify({
-        group_id: groupId
+        group_id: groupId,
+        payment_status: paymentStatus
         })
         });
 

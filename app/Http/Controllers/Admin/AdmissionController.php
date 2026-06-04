@@ -326,11 +326,16 @@ class AdmissionController extends Controller
     public function approve(Request $request, Admission $admission)
     {
         $request->validate([
-            'group_id' => ['required', 'exists:groups,id'],
+            'group_id'       => ['required', 'exists:groups,id'],
+            'payment_status' => ['required', 'in:paid,exempt'],
         ]);
 
         try {
-            $student = $this->admissionService->approveAdmission($admission, (int) $request->group_id);
+            $student = $this->admissionService->approveAdmission(
+                $admission,
+                (int) $request->group_id,
+                $request->payment_status
+            );
 
             if ($request->expectsJson()) {
                 return response()->json([

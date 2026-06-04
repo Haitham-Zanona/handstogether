@@ -34,7 +34,7 @@ class AdmissionService
         });
     }
 
-    public function approveAdmission(Admission $admission, int $groupId): Student
+    public function approveAdmission(Admission $admission, int $groupId, string $paymentStatus = 'paid'): Student
     {
         $group = Group::findOrFail($groupId);
 
@@ -44,7 +44,7 @@ class AdmissionService
 
         $student = $admission->convertToStudent($groupId, Auth::id());
 
-        $this->generatePaymentsForStudent($student, $admission);
+        $this->generatePaymentsForStudent($student, $admission, $paymentStatus);
 
         SendAdmissionNotification::dispatch($admission, 'approved');
 
@@ -87,24 +87,26 @@ class AdmissionService
     /**
      * توليد السجل المالي للطالب عند قبول طلب انتسابه
      */
-    private function generatePaymentsForStudent(Student $student, Admission $admission): void
+    private function generatePaymentsForStudent(Student $student, Admission $admission, string $paymentStatus = 'paid'): void
     {
         $approvedAt  = now();
         $numPayments = max(1, (int) $admission->num_payments);
         $monthlyFee  = (float) $admission->monthly_fee;
 
-        // 1. رسوم طلب الانتساب — مدفوعة فوراً
-        Payment::create([
-            'student_id'     => $student->id,
-            'amount'         => 30,
-            'month'          => $approvedAt->format('Y-m'),
-            'type'           => 'admission_fee',
-            'status'         => 'paid',
-            'due_date'       => $approvedAt->toDateString(),
-            'paid_date'      => $approvedAt->toDateString(),
-            'payment_method' => 'cash',
-            'notes'          => 'رسوم طلب الانتساب',
-        ]);
+        // 1. رسوم طلب الانتساب — يُسجَّل فقط عند الدفع، ويُحذف في حالة الإعفاء
+        if ($paymentStatus !== 'exempt') {
+            Payment::create([
+                'student_id'     => $student->id,
+                'amount'         => 30,
+                'month'          => $approvedAt->format('Y-m'),
+                'type'           => 'admission_fee',
+                'status'         => 'paid',
+                'due_date'       => $approvedAt->toDateString(),
+                'paid_date'      => $approvedAt->toDateString(),
+                'payment_method' => 'cash',
+                'notes'          => 'رسوم طلب الانتساب',
+            ]);
+        }
 
         // 2. الدفعات الشهرية — due_date = تاريخ القبول + i أشهر
         for ($i = 0; $i < $numPayments; $i++) {
