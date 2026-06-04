@@ -2219,89 +2219,113 @@ class AdminController extends Controller
             '09' => 'سبتمبر','10' => 'أكتوبر', '11' => 'نوفمبر',  '12' => 'ديسمبر',
         ];
 
+        $now       = now();
+        $yearMonth = $now->format('Y-m');
+        $rangeStart = $now->copy()->subMonths(11)->startOfMonth()->toDateString();
+
+        // ── 1 query: كل المدفوعات الـ paid في آخر 12 شهراً مُجمَّعة بالشهر ──
+        $paidByMonth = Payment::paid()
+            ->where('paid_date', '>=', $rangeStart)
+            ->selectRaw("DATE_FORMAT(paid_date, '%Y-%m') as ym, SUM(amount) as total")
+            ->groupByRaw("DATE_FORMAT(paid_date, '%Y-%m')")
+            ->pluck('total', 'ym');
+
+        // ── 1 query: كل المدفوعات غير المسددة مُجمَّعة بالشهر ──
+        $unpaidByMonth = Payment::unpaid()
+            ->where('month', '>=', $rangeStart)
+            ->selectRaw('month as ym, SUM(amount) as total')
+            ->groupBy('month')
+            ->pluck('total', 'ym');
+
+        // ── 1 query: مصاريف مُجمَّعة بالشهر ──
+        $expensesByMonth = Expense::where('expense_date', '>=', $rangeStart)
+            ->selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as ym, SUM(amount) as total")
+            ->groupByRaw("DATE_FORMAT(expense_date, '%Y-%m')")
+            ->pluck('total', 'ym');
+
+        // ── 1 query: رواتب مُجمَّعة بالشهر ──
+        $salariesByMonth = SalaryPayment::where('payment_date', '>=', $rangeStart)
+            ->selectRaw("DATE_FORMAT(payment_date, '%Y-%m') as ym, SUM(amount) as total")
+            ->groupByRaw("DATE_FORMAT(payment_date, '%Y-%m')")
+            ->pluck('total', 'ym');
+
+        // ── 1 query: المتأخرات كلها ──
+        $overdueRows = Payment::unpaid()
+            ->where('month', '<', $yearMonth)
+            ->selectRaw('SUM(amount) as total, COUNT(*) as cnt')
+            ->first();
+
+        // ── 1 query: إيرادات اليوم ──
         $todayRevenue = (float) Payment::paid()->whereDate('paid_date', today())->sum('amount');
 
-        $monthRevenue = (float) Payment::paid()
-            ->whereYear('paid_date', now()->year)
-            ->whereMonth('paid_date', now()->month)
-            ->sum('amount');
-
-        $unpaidThisMonth = (float) Payment::unpaid()->where('month', now()->format('Y-m'))->sum('amount');
-
-        $overdueAmount = (float) Payment::unpaid()->where('month', '<', now()->format('Y-m'))->sum('amount');
-        $overdueCount  = Payment::unpaid()->where('month', '<', now()->format('Y-m'))->count();
-
-        // مصاريف الشهر الحالي
-        $expensesThisMonth = (float) Expense::byMonth(now()->year, now()->month)->sum('amount');
-
-        // رواتب مدفوعة هذا الشهر
-        $salariesThisMonth = (float) SalaryPayment::whereYear('payment_date', now()->year)
-            ->whereMonth('payment_date', now()->month)
-            ->sum('amount');
-
-        // صافي الشهر
-        $netThisMonth = $monthRevenue - $expensesThisMonth - $salariesThisMonth;
-
-        $monthlyTrend = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $date           = now()->subMonths($i);
-            $monthlyTrend[] = [
-                'month'  => $date->format('Y-m'),
-                'label'  => ($monthNames[$date->format('m')] ?? '') . ' ' . $date->format('Y'),
-                'amount' => (float) Payment::paid()
-                    ->whereYear('paid_date', $date->year)
-                    ->whereMonth('paid_date', $date->month)
-                    ->sum('amount'),
-            ];
-        }
-
-        // تاريخ شهري تفصيلي — 12 شهراً
-        $monthlyHistory = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $date     = now()->subMonths($i);
-            $y        = $date->year;
-            $m        = $date->month;
-            $revenue  = (float) Payment::paid()->whereYear('paid_date', $y)->whereMonth('paid_date', $m)->sum('amount');
-            $unpaid   = (float) Payment::unpaid()->where('month', $date->format('Y-m'))->sum('amount');
-            $expenses = (float) Expense::byMonth($y, $m)->sum('amount');
-            $salaries = (float) SalaryPayment::whereYear('payment_date', $y)->whereMonth('payment_date', $m)->sum('amount');
-            $monthlyHistory[] = [
-                'month'    => $date->format('Y-m'),
-                'label'    => ($monthNames[$date->format('m')] ?? '') . ' ' . $y,
-                'revenue'  => $revenue,
-                'unpaid'   => $unpaid,
-                'expenses' => $expenses,
-                'salaries' => $salaries,
-                'net'      => $revenue - $expenses - $salaries,
-            ];
-        }
-
+        // ── 1 query: توزيع حسب النوع لهذا الشهر ──
         $typeLabels = ['monthly' => 'شهري', 'admission_fee' => 'رسوم انتساب', 'educational_bundle' => 'حزمة تعليمية'];
         $byType = Payment::paid()
-            ->whereYear('paid_date', now()->year)
-            ->whereMonth('paid_date', now()->month)
+            ->whereYear('paid_date', $now->year)
+            ->whereMonth('paid_date', $now->month)
             ->selectRaw('type, SUM(amount) as total, COUNT(*) as cnt')
             ->groupBy('type')
             ->get()
-            ->map(fn($row) => [
-                'type'  => $row->type,
-                'label' => $typeLabels[$row->type] ?? $row->type,
-                'total' => (float) $row->total,
-                'count' => $row->cnt,
-            ])->values();
+            ->map(fn($r) => ['type' => $r->type, 'label' => $typeLabels[$r->type] ?? $r->type, 'total' => (float)$r->total, 'count' => $r->cnt])
+            ->values();
 
-        $topUnpaid = Payment::with(['student.user'])
-            ->unpaid()
+        // ── 1 query: أعلى الطلاب متأخرة (مع sub-query للاسم) ──
+        $topUnpaidRaw = Payment::unpaid()
             ->selectRaw('student_id, SUM(amount) as total_unpaid, COUNT(*) as months_count')
             ->groupBy('student_id')
             ->orderByDesc('total_unpaid')
             ->limit(10)
-            ->get()
-            ->map(fn($p) => [
-                'student_name' => $p->student?->user?->name ?? 'غير محدد',
-                'total_unpaid' => (float) $p->total_unpaid,
-                'months_count' => $p->months_count,
-            ])->values();
+            ->get();
+        $studentIds = $topUnpaidRaw->pluck('student_id')->toArray();
+        $studentNames = \App\Models\Student::with('user:id,name')
+            ->whereIn('id', $studentIds)
+            ->get(['id'])
+            ->pluck('user.name', 'id');
+        $topUnpaid = $topUnpaidRaw->map(fn($p) => [
+            'student_name' => $studentNames[$p->student_id] ?? 'غير محدد',
+            'total_unpaid' => (float) $p->total_unpaid,
+            'months_count' => $p->months_count,
+        ])->values();
+
+        // ── بناء القيم من البيانات المُجمَّعة (بدون queries إضافية) ──
+        $monthRevenue      = (float) ($paidByMonth[$yearMonth]    ?? 0);
+        $unpaidThisMonth   = (float) ($unpaidByMonth[$yearMonth]  ?? 0);
+        $expensesThisMonth = (float) ($expensesByMonth[$yearMonth]?? 0);
+        $salariesThisMonth = (float) ($salariesByMonth[$yearMonth]?? 0);
+        $netThisMonth      = $monthRevenue - $expensesThisMonth - $salariesThisMonth;
+        $overdueAmount     = (float) ($overdueRows->total ?? 0);
+        $overdueCount      = (int)   ($overdueRows->cnt   ?? 0);
+
+        // ── Monthly Trend (آخر 6 أشهر) ──
+        $monthlyTrend = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $d    = $now->copy()->subMonths($i);
+            $ym   = $d->format('Y-m');
+            $monthlyTrend[] = [
+                'month'  => $ym,
+                'label'  => ($monthNames[$d->format('m')] ?? '') . ' ' . $d->format('Y'),
+                'amount' => (float) ($paidByMonth[$ym] ?? 0),
+            ];
+        }
+
+        // ── Monthly History (آخر 12 شهراً) ──
+        $monthlyHistory = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $d   = $now->copy()->subMonths($i);
+            $ym  = $d->format('Y-m');
+            $rev = (float) ($paidByMonth[$ym]    ?? 0);
+            $exp = (float) ($expensesByMonth[$ym]?? 0);
+            $sal = (float) ($salariesByMonth[$ym]?? 0);
+            $monthlyHistory[] = [
+                'month'    => $ym,
+                'label'    => ($monthNames[$d->format('m')] ?? '') . ' ' . $d->format('Y'),
+                'revenue'  => $rev,
+                'unpaid'   => (float) ($unpaidByMonth[$ym] ?? 0),
+                'expenses' => $exp,
+                'salaries' => $sal,
+                'net'      => $rev - $exp - $sal,
+            ];
+        }
 
         return response()->json([
             'success'               => true,
