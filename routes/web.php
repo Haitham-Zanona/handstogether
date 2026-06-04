@@ -263,6 +263,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/settings/clear-data', [AdminController::class, 'clearData'])->name('settings.clear-data');
         Route::post('/settings/reset-system', [AdminController::class, 'resetSystem'])->name('settings.reset-system');
 
+        // ========== النظام المالي (مصروفات + رواتب) ==========
+        Route::get('/finance/expenses',             [AdminController::class, 'getExpenses'])->name('finance.expenses');
+        Route::post('/finance/expenses',            [AdminController::class, 'storeExpense'])->name('finance.expenses.store');
+        Route::put('/finance/expenses/{expense}',   [AdminController::class, 'updateExpense'])->name('finance.expenses.update');
+        Route::delete('/finance/expenses/{expense}',[AdminController::class, 'destroyExpense'])->name('finance.expenses.destroy');
+        Route::get('/finance/salary-data',          [AdminController::class, 'getSalaryData'])->name('finance.salary.data');
+        Route::post('/finance/salary-pay',          [AdminController::class, 'storeSalaryPayment'])->name('finance.salary.pay');
+        Route::get('/finance/salary-history',       [AdminController::class, 'getSalaryPayments'])->name('finance.salary.history');
+
         // ========== Routes إضافية للمحاضرات والتقارير (اختياري) ==========
 
         // المحاضرات 🆕

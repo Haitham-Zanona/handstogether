@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 use App\Models\Admission;
 use App\Models\Attendance;
 use App\Models\TeacherAttendance;
+use App\Models\Expense;
 use App\Models\Group;
 use App\Models\GroupSubject;
 use App\Models\Lecture;
 use App\Models\LectureSeries;
 use App\Models\ParentMessage;
 use App\Models\Payment;
+use App\Models\SalaryPayment;
+use App\Models\Setting;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Employee;
@@ -1493,20 +1496,21 @@ class AdminController extends Controller
     public function settings()
     {
         $academySettings = [
-            'academy_name'    => 'الأكاديمية التعليمية',
-            'academy_email'   => 'info@academy.edu',
-            'academy_phone'   => '+970-599-123456',
-            'academy_address' => 'نابلس، فلسطين',
-            'monthly_fee'     => 1000,
-            'working_hours'   => 'الأحد - الخميس: 8:00 ص - 4:00 م',
+            'academy_name'           => Setting::get('academy_name', 'الأكاديمية التعليمية'),
+            'academy_email'          => Setting::get('academy_email', 'info@academy.edu'),
+            'academy_phone'          => Setting::get('academy_phone', ''),
+            'academy_address'        => Setting::get('academy_address', ''),
+            'monthly_fee'            => Setting::get('monthly_fee', 0),
+            'working_hours'          => Setting::get('working_hours', ''),
+            'academic_year_end_date' => Setting::get('academic_year_end_date'),
         ];
 
         $systemSettings = [
-            'auto_notifications'  => true,
-            'email_notifications' => true,
-            'sms_notifications'   => false,
-            'attendance_reminder' => true,
-            'payment_reminder'    => true,
+            'auto_notifications'  => (bool) Setting::get('auto_notifications', 1),
+            'email_notifications' => (bool) Setting::get('email_notifications', 1),
+            'sms_notifications'   => (bool) Setting::get('sms_notifications', 0),
+            'attendance_reminder' => (bool) Setting::get('attendance_reminder', 1),
+            'payment_reminder'    => (bool) Setting::get('payment_reminder', 1),
         ];
 
         return view('admin.settings', compact('academySettings', 'systemSettings'));
@@ -1515,11 +1519,22 @@ class AdminController extends Controller
     public function updateSettings(Request $request)
     {
         $request->validate([
-            'academy_name'  => 'required|string|max:255',
-            'academy_email' => 'required|email',
-            'academy_phone' => 'required|string|max:20',
-            'monthly_fee'   => 'required|numeric|min:0',
+            'academy_name'           => 'required|string|max:255',
+            'academy_email'          => 'required|email',
+            'academy_phone'          => 'required|string|max:20',
+            'monthly_fee'            => 'required|numeric|min:0',
+            'academic_year_end_date' => 'nullable|date',
         ]);
+
+        $keys = [
+            'academy_name', 'academy_email', 'academy_phone',
+            'academy_address', 'monthly_fee', 'working_hours',
+            'academic_year_end_date',
+            'auto_notifications', 'attendance_reminder', 'payment_reminder',
+        ];
+        foreach ($keys as $key) {
+            Setting::set($key, $request->input($key));
+        }
 
         return back()->with('success', 'تم حفظ الإعدادات بنجاح');
     }
@@ -2216,6 +2231,17 @@ class AdminController extends Controller
         $overdueAmount = (float) Payment::unpaid()->where('month', '<', now()->format('Y-m'))->sum('amount');
         $overdueCount  = Payment::unpaid()->where('month', '<', now()->format('Y-m'))->count();
 
+        // مصاريف الشهر الحالي
+        $expensesThisMonth = (float) Expense::byMonth(now()->year, now()->month)->sum('amount');
+
+        // رواتب مدفوعة هذا الشهر
+        $salariesThisMonth = (float) SalaryPayment::whereYear('payment_date', now()->year)
+            ->whereMonth('payment_date', now()->month)
+            ->sum('amount');
+
+        // صافي الشهر
+        $netThisMonth = $monthRevenue - $expensesThisMonth - $salariesThisMonth;
+
         $monthlyTrend = [];
         for ($i = 5; $i >= 0; $i--) {
             $date           = now()->subMonths($i);
@@ -2226,6 +2252,27 @@ class AdminController extends Controller
                     ->whereYear('paid_date', $date->year)
                     ->whereMonth('paid_date', $date->month)
                     ->sum('amount'),
+            ];
+        }
+
+        // تاريخ شهري تفصيلي — 12 شهراً
+        $monthlyHistory = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $date     = now()->subMonths($i);
+            $y        = $date->year;
+            $m        = $date->month;
+            $revenue  = (float) Payment::paid()->whereYear('paid_date', $y)->whereMonth('paid_date', $m)->sum('amount');
+            $unpaid   = (float) Payment::unpaid()->where('month', $date->format('Y-m'))->sum('amount');
+            $expenses = (float) Expense::byMonth($y, $m)->sum('amount');
+            $salaries = (float) SalaryPayment::whereYear('payment_date', $y)->whereMonth('payment_date', $m)->sum('amount');
+            $monthlyHistory[] = [
+                'month'    => $date->format('Y-m'),
+                'label'    => ($monthNames[$date->format('m')] ?? '') . ' ' . $y,
+                'revenue'  => $revenue,
+                'unpaid'   => $unpaid,
+                'expenses' => $expenses,
+                'salaries' => $salaries,
+                'net'      => $revenue - $expenses - $salaries,
             ];
         }
 
@@ -2257,15 +2304,19 @@ class AdminController extends Controller
             ])->values();
 
         return response()->json([
-            'success'          => true,
-            'today_revenue'    => $todayRevenue,
-            'month_revenue'    => $monthRevenue,
-            'unpaid_this_month'=> $unpaidThisMonth,
-            'overdue_amount'   => $overdueAmount,
-            'overdue_count'    => $overdueCount,
-            'monthly_trend'    => $monthlyTrend,
-            'by_type'          => $byType,
-            'top_unpaid'       => $topUnpaid,
+            'success'               => true,
+            'today_revenue'         => $todayRevenue,
+            'month_revenue'         => $monthRevenue,
+            'unpaid_this_month'     => $unpaidThisMonth,
+            'overdue_amount'        => $overdueAmount,
+            'overdue_count'         => $overdueCount,
+            'expenses_this_month'   => $expensesThisMonth,
+            'salaries_this_month'   => $salariesThisMonth,
+            'net_this_month'        => $netThisMonth,
+            'monthly_trend'         => $monthlyTrend,
+            'monthly_history'       => $monthlyHistory,
+            'by_type'               => $byType,
+            'top_unpaid'            => $topUnpaid,
         ]);
     }
 
@@ -2280,6 +2331,200 @@ class AdminController extends Controller
         NotificationService::notifyPaymentReceived($payment);
 
         return back()->with('success', 'تم تحديث حالة الدفع وإرسال إشعار لولي الأمر');
+    }
+
+    // ══════════════════════════════════════════════
+    //  المصروفات
+    // ══════════════════════════════════════════════
+
+    public function getExpenses(Request $request)
+    {
+        $year  = $request->year  ?? now()->year;
+        $month = $request->month ?? now()->month;
+
+        $query = Expense::byMonth($year, $month)->orderByDesc('expense_date');
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
+        $expenses = $query->get()->map(fn($e) => [
+            'id'           => $e->id,
+            'category'     => $e->category,
+            'description'  => $e->description,
+            'amount'       => (float) $e->amount,
+            'expense_date' => $e->expense_date->toDateString(),
+            'notes'        => $e->notes,
+        ]);
+
+        $total = $expenses->sum('amount');
+
+        return response()->json([
+            'success'    => true,
+            'expenses'   => $expenses,
+            'total'      => $total,
+            'categories' => Expense::$defaultCategories,
+        ]);
+    }
+
+    public function storeExpense(Request $request)
+    {
+        $data = $request->validate([
+            'category'     => 'required|string|max:100',
+            'description'  => 'required|string|max:255',
+            'amount'       => 'required|numeric|min:0.01',
+            'expense_date' => 'required|date',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+
+        $expense = Expense::create(array_merge($data, ['created_by' => auth()->id()]));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إضافة المصروف بنجاح',
+            'expense' => [
+                'id'           => $expense->id,
+                'category'     => $expense->category,
+                'description'  => $expense->description,
+                'amount'       => (float) $expense->amount,
+                'expense_date' => $expense->expense_date->toDateString(),
+                'notes'        => $expense->notes,
+            ],
+        ]);
+    }
+
+    public function updateExpense(Request $request, Expense $expense)
+    {
+        $data = $request->validate([
+            'category'     => 'required|string|max:100',
+            'description'  => 'required|string|max:255',
+            'amount'       => 'required|numeric|min:0.01',
+            'expense_date' => 'required|date',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+
+        $expense->update($data);
+
+        return response()->json(['success' => true, 'message' => 'تم تحديث المصروف']);
+    }
+
+    public function destroyExpense(Expense $expense)
+    {
+        $expense->delete();
+        return response()->json(['success' => true, 'message' => 'تم حذف المصروف']);
+    }
+
+    // ══════════════════════════════════════════════
+    //  الرواتب
+    // ══════════════════════════════════════════════
+
+    public function getSalaryData(Request $request)
+    {
+        $untilDate = $request->until_date ?? Setting::get('academic_year_end_date');
+
+        $teachers = Teacher::with('user')
+            ->whereNotNull('salary')
+            ->where('salary', '>', 0)
+            ->get()
+            ->map(function ($t) use ($untilDate) {
+                $cycle = $t->getCurrentCycleInfo($untilDate);
+                return [
+                    'id'        => $t->id,
+                    'type'      => 'teacher',
+                    'name'      => $t->user?->name ?? '—',
+                    'salary'    => (float) $t->salary,
+                    'hire_date' => $t->hire_date?->toDateString(),
+                    'cycle'     => $cycle,
+                ];
+            });
+
+        $employees = Employee::with('user')
+            ->whereNotNull('salary')
+            ->where('salary', '>', 0)
+            ->get()
+            ->map(function ($e) use ($untilDate) {
+                $cycle = $e->getCurrentCycleInfo($untilDate);
+                return [
+                    'id'        => $e->id,
+                    'type'      => 'employee',
+                    'name'      => $e->user?->name ?? '—',
+                    'salary'    => (float) $e->salary,
+                    'hire_date' => $e->hire_date?->toDateString(),
+                    'cycle'     => $cycle,
+                ];
+            });
+
+        return response()->json([
+            'success'               => true,
+            'staff'                 => $teachers->merge($employees)->values(),
+            'until_date'            => $untilDate,
+            'academic_year_end_date'=> Setting::get('academic_year_end_date'),
+        ]);
+    }
+
+    public function storeSalaryPayment(Request $request)
+    {
+        $data = $request->validate([
+            'payable_type'     => 'required|in:teacher,employee',
+            'payable_id'       => 'required|integer',
+            'days_worked'      => 'required|integer|min:1|max:31',
+            'daily_rate'       => 'required|numeric|min:0',
+            'amount'           => 'required|numeric|min:0',
+            'cycle_start_date' => 'required|date',
+            'cycle_end_date'   => 'required|date',
+            'payment_date'     => 'required|date',
+            'payment_method'   => 'nullable|string|max:50',
+            'notes'            => 'nullable|string|max:500',
+        ]);
+
+        $modelClass = $data['payable_type'] === 'teacher'
+            ? 'App\\Models\\Teacher'
+            : 'App\\Models\\Employee';
+
+        SalaryPayment::create([
+            'payable_type'     => $modelClass,
+            'payable_id'       => $data['payable_id'],
+            'amount'           => $data['amount'],
+            'daily_rate'       => $data['daily_rate'],
+            'days_worked'      => $data['days_worked'],
+            'cycle_start_date' => $data['cycle_start_date'],
+            'cycle_end_date'   => $data['cycle_end_date'],
+            'payment_date'     => $data['payment_date'],
+            'payment_method'   => $data['payment_method'] ?? null,
+            'notes'            => $data['notes'] ?? null,
+            'created_by'       => auth()->id(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم تسجيل دفع الراتب بنجاح']);
+    }
+
+    public function getSalaryPayments(Request $request)
+    {
+        $year  = $request->year  ?? now()->year;
+        $month = $request->month ?? now()->month;
+
+        $payments = SalaryPayment::with(['payable.user'])
+            ->whereYear('payment_date', $year)
+            ->whereMonth('payment_date', $month)
+            ->orderByDesc('payment_date')
+            ->get()
+            ->map(fn($p) => [
+                'id'               => $p->id,
+                'name'             => $p->payable_name,
+                'role'             => $p->payable_role,
+                'amount'           => (float) $p->amount,
+                'days_worked'      => $p->days_worked,
+                'daily_rate'       => (float) $p->daily_rate,
+                'cycle_start_date' => $p->cycle_start_date->toDateString(),
+                'payment_date'     => $p->payment_date->toDateString(),
+                'payment_method'   => $p->payment_method,
+            ]);
+
+        return response()->json([
+            'success'  => true,
+            'payments' => $payments,
+            'total'    => $payments->sum('amount'),
+        ]);
     }
 
 

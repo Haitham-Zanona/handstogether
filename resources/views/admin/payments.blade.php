@@ -535,171 +535,422 @@ $pageDescription = 'إدارة الدفعات والسجلات المالية';
             </div>
         </div>
 
-        {{-- =============== TAB 4: التقارير اليومية =============== --}}
-        <div x-show="activeTab === 'reports'" class="p-4 space-y-5">
+        {{-- =============== TAB 4: التقارير والمالية =============== --}}
+        <div x-show="activeTab === 'reports'" class="space-y-0">
 
-            {{-- Refresh --}}
-            <div class="flex justify-end">
-                <button @click="loadReport()" :disabled="reportLoading"
-                    class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 transition disabled:opacity-60">
-                    <svg class="w-3.5 h-3.5" :class="reportLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    تحديث
+            {{-- Sub-tabs --}}
+            <div class="flex border-b border-gray-200 px-4 overflow-x-auto bg-gray-50">
+                <button @click="reportSubTab = 'revenue'; if(!reportLoaded) loadReport()"
+                    class="px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap"
+                    :class="reportSubTab === 'revenue' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                    الإيرادات
+                </button>
+                <button @click="reportSubTab = 'expenses'; loadExpenses()"
+                    class="px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap"
+                    :class="reportSubTab === 'expenses' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                    المصروفات
+                </button>
+                <button @click="reportSubTab = 'salaries'; loadSalaryData()"
+                    class="px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap"
+                    :class="reportSubTab === 'salaries' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                    الرواتب
+                </button>
+                <button @click="reportSubTab = 'net'; if(!reportLoaded) loadReport()"
+                    class="px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap"
+                    :class="reportSubTab === 'net' ? 'border-teal-500 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                    الصافي
                 </button>
             </div>
 
-            {{-- Loading --}}
-            <div x-show="reportLoading" class="p-10 text-center text-gray-400">
-                <svg class="animate-spin h-8 w-8 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-                جار تحميل التقرير...
-            </div>
-
-            {{-- Error --}}
-            <div x-show="reportError" class="px-4 py-3 text-red-700 bg-red-50 border border-red-200 rounded-lg text-sm" x-text="reportError"></div>
-
-            <template x-if="reportData && !reportLoading">
-
-                <div class="space-y-5">
-
-                    {{-- Stats Cards --}}
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                            <div class="flex items-center justify-between mb-2">
+            {{-- ── SUB-TAB: الإيرادات ── --}}
+            <div x-show="reportSubTab === 'revenue'" class="p-4 space-y-5">
+                <div class="flex justify-end">
+                    <button @click="loadReport()" :disabled="reportLoading"
+                        class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 transition disabled:opacity-60">
+                        <svg class="w-3.5 h-3.5" :class="reportLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        تحديث
+                    </button>
+                </div>
+                <div x-show="reportLoading" class="p-10 text-center text-gray-400">
+                    <svg class="animate-spin h-8 w-8 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                </div>
+                <div x-show="reportError" class="px-4 py-3 text-red-700 bg-red-50 border border-red-200 rounded-lg text-sm" x-text="reportError"></div>
+                <template x-if="reportData && !reportLoading">
+                    <div class="space-y-5">
+                        {{-- Cards --}}
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                                 <span class="text-xs text-gray-400">محصّل اليوم</span>
-                                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                </div>
+                                <p class="text-2xl font-bold text-green-700 mt-1" x-text="formatNum(reportData.today_revenue)"></p>
+                                <p class="text-xs text-gray-400">ش.ج</p>
                             </div>
-                            <p class="text-2xl font-bold text-green-700" x-text="formatNum(reportData.today_revenue)"></p>
-                            <p class="text-xs text-gray-400 mt-0.5">ش.ج</p>
-                        </div>
-                        <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                            <div class="flex items-center justify-between mb-2">
+                            <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                                 <span class="text-xs text-gray-400">محصّل هذا الشهر</span>
-                                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                                    </svg>
-                                </div>
+                                <p class="text-2xl font-bold text-blue-700 mt-1" x-text="formatNum(reportData.month_revenue)"></p>
+                                <p class="text-xs text-gray-400">ش.ج</p>
                             </div>
-                            <p class="text-2xl font-bold text-blue-700" x-text="formatNum(reportData.month_revenue)"></p>
-                            <p class="text-xs text-gray-400 mt-0.5">ش.ج</p>
-                        </div>
-                        <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                            <div class="flex items-center justify-between mb-2">
+                            <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                                 <span class="text-xs text-gray-400">غير مسدد هذا الشهر</span>
-                                <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                </div>
+                                <p class="text-2xl font-bold text-yellow-700 mt-1" x-text="formatNum(reportData.unpaid_this_month)"></p>
+                                <p class="text-xs text-gray-400">ش.ج</p>
                             </div>
-                            <p class="text-2xl font-bold text-yellow-700" x-text="formatNum(reportData.unpaid_this_month)"></p>
-                            <p class="text-xs text-gray-400 mt-0.5">ش.ج</p>
-                        </div>
-                        <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                            <div class="flex items-center justify-between mb-2">
+                            <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                                 <span class="text-xs text-gray-400">ديون متراكمة</span>
-                                <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                    </svg>
+                                <p class="text-2xl font-bold text-red-700 mt-1" x-text="formatNum(reportData.overdue_amount)"></p>
+                                <p class="text-xs text-gray-400">ش.ج — <span x-text="reportData.overdue_count"></span> دفعة</p>
+                            </div>
+                        </div>
+                        {{-- Trend + By Type --}}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                                <h3 class="text-sm font-semibold text-gray-700 mb-4">الإيرادات — آخر 6 أشهر</h3>
+                                <div class="space-y-2.5">
+                                    <template x-for="(row, i) in reportData.monthly_trend" :key="i">
+                                        <div>
+                                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                                <span x-text="row.label"></span>
+                                                <span class="font-medium text-gray-700" x-text="formatNum(row.amount) + ' ش.ج'"></span>
+                                            </div>
+                                            <div class="w-full bg-gray-100 rounded-full h-2">
+                                                <div class="bg-primary rounded-full h-2 transition-all duration-500"
+                                                    :style="'width:' + trendBarWidth(row.amount) + '%'"></div>
+                                            </div>
+                                        </div>
+                                    </template>
                                 </div>
                             </div>
-                            <p class="text-2xl font-bold text-red-700" x-text="formatNum(reportData.overdue_amount)"></p>
-                            <p class="text-xs text-gray-400 mt-0.5">
-                                ش.ج — <span x-text="reportData.overdue_count"></span> دفعة
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-                        {{-- Monthly Trend --}}
-                        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-4">الإيرادات — آخر 6 أشهر</h3>
-                            <div class="space-y-2.5">
-                                <template x-for="(row, i) in reportData.monthly_trend" :key="i">
-                                    <div>
-                                        <div class="flex justify-between text-xs text-gray-500 mb-1">
-                                            <span x-text="row.label"></span>
-                                            <span class="font-medium text-gray-700" x-text="formatNum(row.amount) + ' ش.ج'"></span>
-                                        </div>
-                                        <div class="w-full bg-gray-100 rounded-full h-2">
-                                            <div class="bg-primary rounded-full h-2 transition-all duration-500"
-                                                :style="'width:' + trendBarWidth(row.amount) + '%'"></div>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        {{-- By Type --}}
-                        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-4">توزيع المحصّل هذا الشهر حسب النوع</h3>
-                            <div x-show="reportData.by_type.length === 0" class="text-center py-6 text-gray-300 text-sm">
-                                لا توجد مدفوعات مسجلة هذا الشهر
-                            </div>
-                            <div class="space-y-3">
-                                <template x-for="(t, i) in reportData.by_type" :key="i">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-2 h-2 rounded-full bg-primary shrink-0"></div>
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex justify-between text-xs mb-1">
-                                                <span class="text-gray-600" x-text="t.label"></span>
-                                                <span class="font-medium text-gray-700" x-text="t.count + ' دفعة — ' + formatNum(t.total) + ' ش.ج'"></span>
-                                            </div>
-                                            <div class="w-full bg-gray-100 rounded-full h-1.5">
-                                                <div class="bg-blue-500 rounded-full h-1.5"
-                                                    :style="'width:' + typeBarWidth(t.total) + '%'"></div>
+                            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                                <h3 class="text-sm font-semibold text-gray-700 mb-4">توزيع المحصّل هذا الشهر حسب النوع</h3>
+                                <div x-show="!reportData.by_type.length" class="text-center py-6 text-gray-300 text-sm">لا توجد مدفوعات</div>
+                                <div class="space-y-3">
+                                    <template x-for="(t, i) in reportData.by_type" :key="i">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-2 h-2 rounded-full bg-primary shrink-0"></div>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex justify-between text-xs mb-1">
+                                                    <span class="text-gray-600" x-text="t.label"></span>
+                                                    <span class="font-medium text-gray-700" x-text="t.count + ' دفعة — ' + formatNum(t.total) + ' ش.ج'"></span>
+                                                </div>
+                                                <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                                    <div class="bg-blue-500 rounded-full h-1.5" :style="'width:' + typeBarWidth(t.total) + '%'"></div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </template>
+                                    </template>
+                                </div>
                             </div>
                         </div>
-
-                    </div>
-
-                    {{-- Top Unpaid Students --}}
-                    <div x-show="reportData.top_unpaid.length > 0" class="bg-white rounded-xl border border-gray-100 shadow-sm">
-                        <div class="px-4 py-3 border-b border-gray-100">
-                            <h3 class="text-sm font-semibold text-gray-700">أعلى الطلاب في المتأخرات</h3>
+                        {{-- Monthly History Table --}}
+                        <div class="bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-gray-700">ملخص الشهور — آخر 12 شهراً</h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">الشهر</th>
+                                            <th class="px-4 py-2.5 text-right text-xs font-medium text-green-600">محصّل</th>
+                                            <th class="px-4 py-2.5 text-right text-xs font-medium text-yellow-600">غير مسدد</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        <template x-for="(row, i) in reportData.monthly_history" :key="i">
+                                            <tr class="hover:bg-gray-50 transition-colors"
+                                                :class="row.month === new Date().toISOString().slice(0,7) ? 'bg-blue-50/50' : ''">
+                                                <td class="px-4 py-2.5 font-medium text-gray-700" x-text="row.label"></td>
+                                                <td class="px-4 py-2.5 text-green-700 font-medium" x-text="formatNum(row.revenue) + ' ش.ج'"></td>
+                                                <td class="px-4 py-2.5 text-yellow-700" x-text="formatNum(row.unpaid) + ' ش.ج'"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead class="bg-gray-50">
-                                    <tr>
+                        {{-- Top Unpaid --}}
+                        <div x-show="reportData.top_unpaid.length > 0" class="bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <div class="px-4 py-3 border-b border-gray-100">
+                                <h3 class="text-sm font-semibold text-gray-700">أعلى الطلاب في المتأخرات</h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50"><tr>
                                         <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">#</th>
                                         <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">الطالب</th>
-                                        <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">عدد الأشهر</th>
+                                        <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">أشهر</th>
                                         <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">إجمالي المتأخرات</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-50">
-                                    <template x-for="(s, i) in reportData.top_unpaid" :key="i">
-                                        <tr class="hover:bg-gray-50 transition-colors">
-                                            <td class="px-4 py-2.5 text-xs text-gray-400" x-text="i + 1"></td>
-                                            <td class="px-4 py-2.5 font-medium text-gray-800" x-text="s.student_name"></td>
-                                            <td class="px-4 py-2.5">
-                                                <span class="px-2 py-0.5 bg-orange-50 text-orange-700 rounded text-xs" x-text="s.months_count + ' شهر'"></span>
-                                            </td>
-                                            <td class="px-4 py-2.5 font-bold text-red-600" x-text="formatNum(s.total_unpaid) + ' ش.ج'"></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
+                                    </tr></thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        <template x-for="(s, i) in reportData.top_unpaid" :key="i">
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-4 py-2.5 text-xs text-gray-400" x-text="i + 1"></td>
+                                                <td class="px-4 py-2.5 font-medium text-gray-800" x-text="s.student_name"></td>
+                                                <td class="px-4 py-2.5"><span class="px-2 py-0.5 bg-orange-50 text-orange-700 rounded text-xs" x-text="s.months_count + ' شهر'"></span></td>
+                                                <td class="px-4 py-2.5 font-bold text-red-600" x-text="formatNum(s.total_unpaid) + ' ش.ج'"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
+                </template>
+            </div>
 
+            {{-- ── SUB-TAB: المصروفات ── --}}
+            <div x-show="reportSubTab === 'expenses'" class="p-4 space-y-4">
+                {{-- Header --}}
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <input type="month" x-model="expFilters.month" @change="loadExpenses()"
+                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                        <select x-model="expFilters.category" @change="loadExpenses()"
+                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                            <option value="">جميع التصنيفات</option>
+                            <template x-for="cat in expCategories" :key="cat">
+                                <option :value="cat" x-text="cat"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <button @click="openExpenseModal()"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        إضافة مصروف
+                    </button>
                 </div>
-            </template>
+                {{-- Total --}}
+                <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-center justify-between">
+                    <span class="text-sm text-orange-700 font-medium">إجمالي المصروفات</span>
+                    <span class="text-xl font-bold text-orange-700" x-text="formatNum(expTotal) + ' ش.ج'"></span>
+                </div>
+                {{-- Loading --}}
+                <div x-show="expLoading" class="py-8 text-center text-gray-400">
+                    <svg class="animate-spin h-7 w-7 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                </div>
+                {{-- Expenses Table --}}
+                <div x-show="!expLoading" class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+                    <table class="w-full text-sm" x-show="expenses.length > 0">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">التصنيف</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">الوصف</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">المبلغ</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">التاريخ</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            <template x-for="exp in expenses" :key="exp.id">
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-2.5">
+                                        <span class="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-full" x-text="exp.category"></span>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-gray-700" x-text="exp.description"></td>
+                                    <td class="px-4 py-2.5 font-semibold text-gray-800" x-text="formatNum(exp.amount) + ' ش.ج'"></td>
+                                    <td class="px-4 py-2.5 text-xs text-gray-500" x-text="exp.expense_date"></td>
+                                    <td class="px-4 py-2.5">
+                                        <div class="flex items-center gap-1">
+                                            <button @click="openExpenseModal(exp)" class="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition" title="تعديل">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            </button>
+                                            <button @click="deleteExpense(exp)" class="p-1.5 text-red-500 hover:bg-red-50 rounded transition" title="حذف">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div x-show="!expenses.length && !expLoading" class="py-10 text-center text-gray-400 text-sm">
+                        لا توجد مصروفات لهذا الشهر
+                    </div>
+                </div>
+            </div>
+
+            {{-- ── SUB-TAB: الرواتب ── --}}
+            <div x-show="reportSubTab === 'salaries'" class="p-4 space-y-4">
+                {{-- Date Filter --}}
+                <div class="flex flex-wrap items-center gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">احسب حتى تاريخ</label>
+                        <input type="date" x-model="salaryUntilDate" @change="loadSalaryData()"
+                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                    </div>
+                    <div class="text-xs text-gray-400 mt-4">
+                        <span x-show="salaryUntilDate" x-text="'سعر اليوم = الراتب ÷ 31'"></span>
+                    </div>
+                </div>
+                {{-- Loading --}}
+                <div x-show="salaryLoading" class="py-8 text-center text-gray-400">
+                    <svg class="animate-spin h-7 w-7 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                </div>
+                {{-- Staff Salary Table --}}
+                <div x-show="!salaryLoading" class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+                    <table class="w-full text-sm" x-show="salaryStaff.length > 0">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">الاسم</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">الراتب / شهر</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">سعر اليوم</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">بداية الدورة</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">أيام عمل</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">المستحق</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            <template x-for="s in salaryStaff" :key="s.type + s.id">
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-2.5">
+                                        <div class="font-medium text-gray-800" x-text="s.name"></div>
+                                        <div class="text-xs text-gray-400" x-text="s.type === 'teacher' ? 'مدرس' : 'موظف'"></div>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-gray-600" x-text="formatNum(s.salary) + ' ش.ج'"></td>
+                                    <td class="px-4 py-2.5 text-gray-500 text-xs" x-text="s.cycle?.daily_rate ? formatNum(s.cycle.daily_rate) + ' ش.ج' : '—'"></td>
+                                    <td class="px-4 py-2.5 text-xs text-gray-500" x-text="s.cycle?.cycle_start ?? '—'"></td>
+                                    <td class="px-4 py-2.5">
+                                        <span x-show="s.cycle?.days_worked"
+                                            :class="s.cycle?.full_cycle_due ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'"
+                                            class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                            x-text="(s.cycle?.days_worked ?? '—') + ' / 31'">
+                                        </span>
+                                        <span x-show="!s.cycle?.days_worked" class="text-gray-400 text-xs">—</span>
+                                    </td>
+                                    <td class="px-4 py-2.5 font-bold text-purple-700" x-text="s.cycle?.prorated_amount ? formatNum(s.cycle.prorated_amount) + ' ش.ج' : '—'"></td>
+                                    <td class="px-4 py-2.5">
+                                        <button x-show="s.cycle?.prorated_amount > 0"
+                                            @click="confirmSalaryPayment(s)"
+                                            class="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-lg hover:bg-purple-200 transition">
+                                            دفع
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    <div x-show="!salaryStaff.length && !salaryLoading" class="py-10 text-center text-gray-400 text-sm">
+                        لا يوجد عاملون بأجور محددة
+                    </div>
+                </div>
+                {{-- Salary History --}}
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm">
+                    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-700">سجل الرواتب المدفوعة</h3>
+                        <div class="flex items-center gap-2">
+                            <input type="month" x-model="salaryHistMonth" @change="loadSalaryHistory()"
+                                class="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm" x-show="salaryHistory.length > 0">
+                            <thead class="bg-gray-50"><tr>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">الاسم</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">الصفة</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">أيام</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">المبلغ</th>
+                                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">تاريخ الدفع</th>
+                            </tr></thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <template x-for="p in salaryHistory" :key="p.id">
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-2.5 font-medium text-gray-800" x-text="p.name"></td>
+                                        <td class="px-4 py-2.5 text-xs text-gray-500" x-text="p.role"></td>
+                                        <td class="px-4 py-2.5 text-xs"><span class="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full" x-text="p.days_worked + ' يوم'"></span></td>
+                                        <td class="px-4 py-2.5 font-semibold text-purple-700" x-text="formatNum(p.amount) + ' ش.ج'"></td>
+                                        <td class="px-4 py-2.5 text-xs text-gray-500" x-text="p.payment_date"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <div x-show="!salaryHistory.length" class="py-6 text-center text-gray-400 text-sm">لا توجد مدفوعات</div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ── SUB-TAB: الصافي ── --}}
+            <div x-show="reportSubTab === 'net'" class="p-4 space-y-5">
+                <div x-show="reportLoading" class="py-8 text-center text-gray-400">
+                    <svg class="animate-spin h-7 w-7 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                </div>
+                <template x-if="reportData && !reportLoading">
+                    <div class="space-y-5">
+                        {{-- Summary Cards --}}
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                                <p class="text-xs text-blue-600 mb-1">إيرادات الشهر</p>
+                                <p class="text-xl font-bold text-blue-700" x-text="formatNum(reportData.month_revenue) + ' ش.ج'"></p>
+                            </div>
+                            <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+                                <p class="text-xs text-orange-600 mb-1">مصاريف الشهر</p>
+                                <p class="text-xl font-bold text-orange-700" x-text="formatNum(reportData.expenses_this_month) + ' ش.ج'"></p>
+                            </div>
+                            <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+                                <p class="text-xs text-purple-600 mb-1">رواتب مدفوعة</p>
+                                <p class="text-xl font-bold text-purple-700" x-text="formatNum(reportData.salaries_this_month) + ' ش.ج'"></p>
+                            </div>
+                            <div :class="reportData.net_this_month >= 0 ? 'bg-teal-50 border-teal-200' : 'bg-red-50 border-red-200'"
+                                class="border rounded-xl p-4 text-center">
+                                <p class="text-xs mb-1" :class="reportData.net_this_month >= 0 ? 'text-teal-600' : 'text-red-600'">صافي الشهر</p>
+                                <p class="text-xl font-bold" :class="reportData.net_this_month >= 0 ? 'text-teal-700' : 'text-red-700'"
+                                    x-text="formatNum(reportData.net_this_month) + ' ش.ج'"></p>
+                            </div>
+                        </div>
+                        {{-- Formula --}}
+                        <div class="bg-gray-50 rounded-xl p-3 text-xs text-gray-500 text-center">
+                            الصافي = إيرادات (<span class="text-blue-600 font-medium" x-text="formatNum(reportData.month_revenue)"></span>)
+                            − مصاريف (<span class="text-orange-600 font-medium" x-text="formatNum(reportData.expenses_this_month)"></span>)
+                            − رواتب (<span class="text-purple-600 font-medium" x-text="formatNum(reportData.salaries_this_month)"></span>)
+                            = <span class="font-bold" :class="reportData.net_this_month >= 0 ? 'text-teal-600' : 'text-red-600'" x-text="formatNum(reportData.net_this_month)"></span> ش.ج
+                        </div>
+                        {{-- 12-Month Net History --}}
+                        <div class="bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <div class="px-4 py-3 border-b border-gray-100">
+                                <h3 class="text-sm font-semibold text-gray-700">مقارنة الشهور — آخر 12 شهراً</h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50"><tr>
+                                        <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500">الشهر</th>
+                                        <th class="px-4 py-2.5 text-right text-xs font-medium text-blue-600">إيرادات</th>
+                                        <th class="px-4 py-2.5 text-right text-xs font-medium text-orange-600">مصاريف</th>
+                                        <th class="px-4 py-2.5 text-right text-xs font-medium text-purple-600">رواتب</th>
+                                        <th class="px-4 py-2.5 text-right text-xs font-medium text-teal-600">صافي</th>
+                                    </tr></thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        <template x-for="(row, i) in reportData.monthly_history" :key="i">
+                                            <tr class="hover:bg-gray-50"
+                                                :class="row.month === new Date().toISOString().slice(0,7) ? 'bg-blue-50/40' : ''">
+                                                <td class="px-4 py-2.5 font-medium text-gray-700" x-text="row.label"></td>
+                                                <td class="px-4 py-2.5 text-blue-600" x-text="formatNum(row.revenue) + ' ش.ج'"></td>
+                                                <td class="px-4 py-2.5 text-orange-600" x-text="formatNum(row.expenses) + ' ش.ج'"></td>
+                                                <td class="px-4 py-2.5 text-purple-600" x-text="formatNum(row.salaries) + ' ش.ج'"></td>
+                                                <td class="px-4 py-2.5 font-bold"
+                                                    :class="row.net >= 0 ? 'text-teal-700' : 'text-red-600'"
+                                                    x-text="formatNum(row.net) + ' ش.ج'"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
 
         </div>
 
@@ -985,6 +1236,70 @@ $pageDescription = 'إدارة الدفعات والسجلات المالية';
         </div>
     </div>
 
+    {{-- ===================== MODAL: مصروف ===================== --}}
+    <div x-show="showExpenseModal" x-transition.opacity
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        @keydown.escape.window="showExpenseModal = false">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <h3 class="text-base font-bold text-gray-800" x-text="editingExpense ? 'تعديل مصروف' : 'إضافة مصروف جديد'"></h3>
+                <button @click="showExpenseModal = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">التصنيف *</label>
+                    <select x-model="expForm.category" @change="expCustomCategory = expForm.category === 'أخرى'"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                        <option value="">— اختر تصنيف —</option>
+                        <template x-for="cat in expCategories" :key="cat">
+                            <option :value="cat" x-text="cat"></option>
+                        </template>
+                    </select>
+                </div>
+                <div x-show="expCustomCategory">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">تصنيف مخصص *</label>
+                    <input type="text" x-model="expForm.customCategory" placeholder="اكتب التصنيف..."
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">الوصف *</label>
+                    <input type="text" x-model="expForm.description" placeholder="وصف المصروف"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">المبلغ (ش.ج) *</label>
+                        <input type="number" x-model="expForm.amount" min="0.01" step="0.01" placeholder="0.00"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">التاريخ *</label>
+                        <input type="date" x-model="expForm.expense_date"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">ملاحظات</label>
+                    <textarea x-model="expForm.notes" rows="2" placeholder="اختياري"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"></textarea>
+                </div>
+            </div>
+            <div class="flex gap-3 px-6 pb-6">
+                <button @click="saveExpense()" :disabled="savingExpense"
+                    class="flex-1 py-2.5 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition disabled:opacity-60">
+                    <span x-show="!savingExpense" x-text="editingExpense ? 'حفظ التعديلات' : 'إضافة'"></span>
+                    <span x-show="savingExpense">جار الحفظ...</span>
+                </button>
+                <button @click="showExpenseModal = false"
+                    class="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>{{-- end x-data --}}
 
 @push('scripts')
@@ -1002,6 +1317,10 @@ window.routes = {
     paymentsAddCustom:      '{{ url("/admin/payments/add-custom") }}',
     paymentsStudentSearch:  '{{ url("/admin/payments/student-search") }}',
     paymentsGroupsList:     '{{ url("/admin/payments/groups-list") }}',
+    financeExpenses:        '{{ url("/admin/finance/expenses") }}',
+    financeSalaryData:      '{{ url("/admin/finance/salary-data") }}',
+    financeSalaryPay:       '{{ url("/admin/finance/salary-pay") }}',
+    financeSalaryHistory:   '{{ url("/admin/finance/salary-history") }}',
 };
 
 function paymentsManager() {
@@ -1061,10 +1380,30 @@ function paymentsManager() {
         commBulkSending: false,
 
         // Reports tab
+        reportSubTab: 'revenue',
         reportData: null,
         reportLoading: false,
         reportLoaded: false,
         reportError: '',
+
+        // Expenses
+        expenses: [],
+        expTotal: 0,
+        expLoading: false,
+        expCategories: ['كهرباء', 'ماء', 'إيجار', 'صيانة', 'مواد مكتبية', 'أخرى'],
+        expFilters: { month: new Date().toISOString().slice(0, 7), category: '' },
+        showExpenseModal: false,
+        editingExpense: null,
+        savingExpense: false,
+        expCustomCategory: false,
+        expForm: { category: '', customCategory: '', description: '', amount: '', expense_date: new Date().toISOString().split('T')[0], notes: '' },
+
+        // Salaries
+        salaryStaff: [],
+        salaryLoading: false,
+        salaryUntilDate: '',
+        salaryHistory: [],
+        salaryHistMonth: new Date().toISOString().slice(0, 7),
 
         // History tab
         histFilters: { studentId: '', monthFrom: '', monthTo: '', status: 'all', type: 'all' },
@@ -1381,6 +1720,141 @@ function paymentsManager() {
                 else this.reportError = d.message || 'حدث خطأ في تحميل التقرير';
             } catch (_) { this.reportError = 'حدث خطأ في الاتصال بالخادم'; }
             finally { this.reportLoading = false; }
+        },
+
+        // ── Expenses ──
+        async loadExpenses() {
+            this.expLoading = true;
+            try {
+                const p = new URLSearchParams();
+                if (this.expFilters.month) {
+                    const [y, m] = this.expFilters.month.split('-');
+                    p.set('year', y); p.set('month', m);
+                }
+                if (this.expFilters.category) p.set('category', this.expFilters.category);
+                const r = await fetch(`${window.routes.financeExpenses}?${p}`);
+                const d = await r.json();
+                if (d.success) {
+                    this.expenses   = d.expenses;
+                    this.expTotal   = d.total;
+                    if (d.categories?.length) this.expCategories = d.categories;
+                }
+            } catch (_) {}
+            finally { this.expLoading = false; }
+        },
+
+        openExpenseModal(exp = null) {
+            this.editingExpense     = exp;
+            this.expCustomCategory  = false;
+            this.expForm = exp ? {
+                category:       exp.category,
+                customCategory: '',
+                description:    exp.description,
+                amount:         exp.amount,
+                expense_date:   exp.expense_date,
+                notes:          exp.notes ?? '',
+            } : {
+                category: '', customCategory: '', description: '',
+                amount: '', expense_date: new Date().toISOString().split('T')[0], notes: '',
+            };
+            this.showExpenseModal = true;
+        },
+
+        async saveExpense() {
+            const cat = this.expForm.category === 'أخرى' && this.expForm.customCategory.trim()
+                ? this.expForm.customCategory.trim()
+                : this.expForm.category;
+            if (!cat || !this.expForm.description.trim() || !this.expForm.amount) {
+                alert('يرجى تعبئة التصنيف والوصف والمبلغ');
+                return;
+            }
+            this.savingExpense = true;
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            try {
+                const payload = { category: cat, description: this.expForm.description,
+                    amount: this.expForm.amount, expense_date: this.expForm.expense_date, notes: this.expForm.notes };
+                const url    = this.editingExpense
+                    ? `${window.routes.financeExpenses}/${this.editingExpense.id}`
+                    : window.routes.financeExpenses;
+                const method = this.editingExpense ? 'PUT' : 'POST';
+                const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify(payload) });
+                const d = await r.json();
+                if (d.success) { this.showExpenseModal = false; await this.loadExpenses(); }
+                else alert(d.message || 'حدث خطأ');
+            } catch (_) { alert('حدث خطأ في الاتصال'); }
+            finally { this.savingExpense = false; }
+        },
+
+        async deleteExpense(exp) {
+            if (!confirm(`حذف المصروف "${exp.description}"؟`)) return;
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            try {
+                const r = await fetch(`${window.routes.financeExpenses}/${exp.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf } });
+                const d = await r.json();
+                if (d.success) await this.loadExpenses();
+                else alert(d.message || 'حدث خطأ في الحذف');
+            } catch (_) { alert('حدث خطأ في الاتصال'); }
+        },
+
+        // ── Salaries ──
+        async loadSalaryData() {
+            this.salaryLoading = true;
+            try {
+                const p = new URLSearchParams();
+                if (this.salaryUntilDate) p.set('until_date', this.salaryUntilDate);
+                const r = await fetch(`${window.routes.financeSalaryData}?${p}`);
+                const d = await r.json();
+                if (d.success) {
+                    this.salaryStaff = d.staff;
+                    if (!this.salaryUntilDate && d.academic_year_end_date)
+                        this.salaryUntilDate = d.academic_year_end_date;
+                    await this.loadSalaryHistory();
+                }
+            } catch (_) {}
+            finally { this.salaryLoading = false; }
+        },
+
+        async loadSalaryHistory() {
+            try {
+                const p = new URLSearchParams();
+                if (this.salaryHistMonth) {
+                    const [y, m] = this.salaryHistMonth.split('-');
+                    p.set('year', y); p.set('month', m);
+                }
+                const r = await fetch(`${window.routes.financeSalaryHistory}?${p}`);
+                const d = await r.json();
+                if (d.success) this.salaryHistory = d.payments;
+            } catch (_) {}
+        },
+
+        async confirmSalaryPayment(staff) {
+            const c = staff.cycle;
+            if (!c) return;
+            const msg = `تأكيد دفع راتب ${staff.name}:\n` +
+                `أيام العمل: ${c.days_worked} / 31\n` +
+                `سعر اليوم: ${this.formatNum(c.daily_rate)} ش.ج\n` +
+                `المبلغ المستحق: ${this.formatNum(c.prorated_amount)} ش.ج`;
+            if (!confirm(msg)) return;
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            try {
+                const r = await fetch(window.routes.financeSalaryPay, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({
+                        payable_type:     staff.type,
+                        payable_id:       staff.id,
+                        days_worked:      c.days_worked,
+                        daily_rate:       c.daily_rate,
+                        amount:           c.prorated_amount,
+                        cycle_start_date: c.cycle_start,
+                        cycle_end_date:   c.cycle_end,
+                        payment_date:     new Date().toISOString().split('T')[0],
+                    }),
+                });
+                const d = await r.json();
+                if (d.success) { alert(d.message); await this.loadSalaryHistory(); }
+                else alert(d.message || 'حدث خطأ في تسجيل الدفع');
+            } catch (_) { alert('حدث خطأ في الاتصال'); }
         },
 
         trendBarWidth(amount) {
