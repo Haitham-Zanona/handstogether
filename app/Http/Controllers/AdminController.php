@@ -12,6 +12,7 @@ use App\Models\ParentMessage;
 use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Models\Employee;
 use App\Models\Teacher;
 use App\Services\NotificationService;
 use App\Services\SeriesGenerator;
@@ -1236,6 +1237,8 @@ class AdminController extends Controller
             'specializations' => $t->specializations ?? [],
             'account_type'    => $t->account_type ?? '',
             'account_number'  => $t->account_number ?? '',
+            'hire_date'       => $t->hire_date?->format('Y-m-d') ?? '',
+            'salary'          => $t->salary ? (float) $t->salary : null,
             'groups'          => $t->assignedGroups->map(fn($g) => ['id' => $g->id, 'name' => $g->name])->values(),
             'is_active'       => $t->user->is_active ?? true,
         ]);
@@ -1252,19 +1255,21 @@ class AdminController extends Controller
     public function storeTeacher(Request $request)
     {
         $validated = $request->validate([
-            'name'            => 'required|string|max:255',
-            'national_id'     => 'required|string|size:9|unique:users,national_id',
-            'birth_date'      => 'required|date',
-            'specializations' => 'required|array|min:1',
+            'name'              => 'required|string|max:255',
+            'national_id'       => 'required|string|size:9|unique:users,national_id',
+            'birth_date'        => 'required|date',
+            'specializations'   => 'required|array|min:1',
             'specializations.*' => 'string',
-            'groups'          => 'nullable|array',
-            'groups.*'        => 'exists:groups,id',
-            'account_type'    => 'nullable|string|in:bank_of_palestine,pal_pay,jawwal_pay',
-            'account_number'  => 'nullable|string|max:50',
+            'groups'            => 'nullable|array',
+            'groups.*'          => 'exists:groups,id',
+            'account_type'      => 'nullable|string|in:bank_of_palestine,pal_pay,jawwal_pay',
+            'account_number'    => 'nullable|string|max:50',
+            'hire_date'         => 'nullable|date',
+            'salary'            => 'nullable|numeric|min:0',
         ]);
 
         $birthDate = Carbon::parse($validated['birth_date']);
-        $password  = $birthDate->format('dmY'); // DDMMYYYY
+        $password  = $birthDate->format('dmY');
 
         $user = User::create([
             'name'              => $validated['name'],
@@ -1282,6 +1287,8 @@ class AdminController extends Controller
             'specializations' => $validated['specializations'],
             'account_type'    => $validated['account_type'] ?? null,
             'account_number'  => $validated['account_number'] ?? null,
+            'hire_date'       => $validated['hire_date'] ?? null,
+            'salary'          => $validated['salary'] ?? null,
         ]);
 
         if (! empty($validated['groups'])) {
@@ -1299,6 +1306,8 @@ class AdminController extends Controller
                 'specializations' => $teacher->specializations,
                 'account_type'    => $teacher->account_type,
                 'account_number'  => $teacher->account_number,
+                'hire_date'       => $teacher->hire_date?->format('Y-m-d') ?? '',
+                'salary'          => $teacher->salary ? (float) $teacher->salary : null,
                 'groups'          => $teacher->assignedGroups()->get()->map(fn($g) => ['id' => $g->id, 'name' => $g->name])->values(),
                 'is_active'       => true,
             ],
@@ -1308,15 +1317,17 @@ class AdminController extends Controller
     public function updateTeacher(Request $request, Teacher $teacher)
     {
         $validated = $request->validate([
-            'name'            => 'required|string|max:255',
-            'national_id'     => ['required', 'string', 'size:9', Rule::unique('users', 'national_id')->ignore($teacher->user_id)],
-            'birth_date'      => 'required|date',
-            'specializations' => 'required|array|min:1',
+            'name'              => 'required|string|max:255',
+            'national_id'       => ['required', 'string', 'size:9', Rule::unique('users', 'national_id')->ignore($teacher->user_id)],
+            'birth_date'        => 'required|date',
+            'specializations'   => 'required|array|min:1',
             'specializations.*' => 'string',
-            'groups'          => 'nullable|array',
-            'groups.*'        => 'exists:groups,id',
-            'account_type'    => 'nullable|string|in:bank_of_palestine,pal_pay,jawwal_pay',
-            'account_number'  => 'nullable|string|max:50',
+            'groups'            => 'nullable|array',
+            'groups.*'          => 'exists:groups,id',
+            'account_type'      => 'nullable|string|in:bank_of_palestine,pal_pay,jawwal_pay',
+            'account_number'    => 'nullable|string|max:50',
+            'hire_date'         => 'nullable|date',
+            'salary'            => 'nullable|numeric|min:0',
         ]);
 
         $birthDate = Carbon::parse($validated['birth_date']);
@@ -1334,6 +1345,8 @@ class AdminController extends Controller
             'specializations' => $validated['specializations'],
             'account_type'    => $validated['account_type'] ?? null,
             'account_number'  => $validated['account_number'] ?? null,
+            'hire_date'       => $validated['hire_date'] ?? null,
+            'salary'          => $validated['salary'] ?? null,
         ]);
 
         $teacher->assignedGroups()->sync($validated['groups'] ?? []);
@@ -1345,6 +1358,117 @@ class AdminController extends Controller
     {
         $teacher->user()->delete();
         return response()->json(['success' => true, 'message' => 'تم حذف حساب المدرس']);
+    }
+
+    public function getEmployeesData()
+    {
+        $employees = Employee::with('user')->get()->map(fn($e) => [
+            'id'             => $e->id,
+            'name'           => $e->user->name ?? '—',
+            'national_id'    => $e->user->national_id ?? '—',
+            'birth_date'     => $e->user->birth_date?->format('Y-m-d') ?? '',
+            'job_title'      => $e->job_title,
+            'hire_date'      => $e->hire_date?->format('Y-m-d') ?? '',
+            'salary'         => $e->salary ? (float) $e->salary : null,
+            'account_type'   => $e->account_type ?? '',
+            'account_number' => $e->account_number ?? '',
+            'is_active'      => $e->user->is_active ?? true,
+        ]);
+
+        return response()->json(['success' => true, 'employees' => $employees]);
+    }
+
+    public function storeEmployee(Request $request)
+    {
+        $validated = $request->validate([
+            'name'           => 'required|string|max:255',
+            'national_id'    => 'required|string|size:9|unique:users,national_id',
+            'birth_date'     => 'required|date',
+            'job_title'      => 'required|string|max:100',
+            'hire_date'      => 'nullable|date',
+            'salary'         => 'nullable|numeric|min:0',
+            'account_type'   => 'nullable|string|in:bank_of_palestine,pal_pay,jawwal_pay',
+            'account_number' => 'nullable|string|max:50',
+        ]);
+
+        $password = Carbon::parse($validated['birth_date'])->format('dmY');
+
+        $user = User::create([
+            'name'              => $validated['name'],
+            'email'             => $validated['national_id'] . '@staff.local',
+            'national_id'       => $validated['national_id'],
+            'birth_date'        => $validated['birth_date'],
+            'password'          => Hash::make($password),
+            'role'              => 'employee',
+            'is_active'         => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $employee = Employee::create([
+            'user_id'        => $user->id,
+            'job_title'      => $validated['job_title'],
+            'hire_date'      => $validated['hire_date'] ?? null,
+            'salary'         => $validated['salary'] ?? null,
+            'account_type'   => $validated['account_type'] ?? null,
+            'account_number' => $validated['account_number'] ?? null,
+        ]);
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'تم إنشاء حساب الموظف بنجاح',
+            'employee' => [
+                'id'             => $employee->id,
+                'name'           => $user->name,
+                'national_id'    => $user->national_id,
+                'birth_date'     => $user->birth_date->format('Y-m-d'),
+                'job_title'      => $employee->job_title,
+                'hire_date'      => $employee->hire_date?->format('Y-m-d') ?? '',
+                'salary'         => $employee->salary ? (float) $employee->salary : null,
+                'account_type'   => $employee->account_type,
+                'account_number' => $employee->account_number,
+                'is_active'      => true,
+            ],
+        ], 201);
+    }
+
+    public function updateEmployee(Request $request, Employee $employee)
+    {
+        $validated = $request->validate([
+            'name'           => 'required|string|max:255',
+            'national_id'    => ['required', 'string', 'size:9', Rule::unique('users', 'national_id')->ignore($employee->user_id)],
+            'birth_date'     => 'required|date',
+            'job_title'      => 'required|string|max:100',
+            'hire_date'      => 'nullable|date',
+            'salary'         => 'nullable|numeric|min:0',
+            'account_type'   => 'nullable|string|in:bank_of_palestine,pal_pay,jawwal_pay',
+            'account_number' => 'nullable|string|max:50',
+        ]);
+
+        $password = Carbon::parse($validated['birth_date'])->format('dmY');
+
+        $employee->user->update([
+            'name'        => $validated['name'],
+            'email'       => $validated['national_id'] . '@staff.local',
+            'national_id' => $validated['national_id'],
+            'birth_date'  => $validated['birth_date'],
+            'password'    => Hash::make($password),
+        ]);
+
+        $employee->update([
+            'job_title'      => $validated['job_title'],
+            'hire_date'      => $validated['hire_date'] ?? null,
+            'salary'         => $validated['salary'] ?? null,
+            'account_type'   => $validated['account_type'] ?? null,
+            'account_number' => $validated['account_number'] ?? null,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم تحديث بيانات الموظف بنجاح']);
+    }
+
+    public function destroyEmployee(Employee $employee)
+    {
+        $employee->user()->delete();
+        return response()->json(['success' => true, 'message' => 'تم حذف حساب الموظف']);
     }
 
     public function parentMessages()

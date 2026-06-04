@@ -242,6 +242,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/staff', [AdminController::class, 'storeTeacher'])->name('staff.store');
         Route::put('/staff/{teacher}', [AdminController::class, 'updateTeacher'])->name('staff.update');
         Route::delete('/staff/{teacher}', [AdminController::class, 'destroyTeacher'])->name('staff.destroy');
+        Route::get('/staff/employees/data', [AdminController::class, 'getEmployeesData'])->name('staff.employees.data');
+        Route::post('/staff/employees', [AdminController::class, 'storeEmployee'])->name('staff.employees.store');
+        Route::put('/staff/employees/{employee}', [AdminController::class, 'updateEmployee'])->name('staff.employees.update');
+        Route::delete('/staff/employees/{employee}', [AdminController::class, 'destroyEmployee'])->name('staff.employees.destroy');
 
         // ========== حضور وغياب المدرسين ==========
         Route::get('/teacher-attendance', [AdminController::class, 'teacherAttendance'])->name('teacher-attendance');

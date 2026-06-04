@@ -7,10 +7,13 @@ class Teacher extends Model
 {
     protected $fillable = [
         'user_id', 'specialization', 'specializations', 'account_type', 'account_number',
+        'hire_date', 'salary',
     ];
 
     protected $casts = [
         'specializations' => 'array',
+        'hire_date'       => 'date',
+        'salary'          => 'decimal:2',
     ];
 
     public function user()
