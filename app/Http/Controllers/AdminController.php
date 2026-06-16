@@ -2223,11 +2223,14 @@ class AdminController extends Controller
         $yearMonth = $now->format('Y-m');
         $rangeStart = $now->copy()->subMonths(11)->startOfMonth()->toDateString();
 
+        $isPgsql = DB::getDriverName() === 'pgsql';
+
         // ── 1 query: كل المدفوعات الـ paid في آخر 12 شهراً مُجمَّعة بالشهر ──
+        $paidYm = $isPgsql ? "TO_CHAR(paid_date, 'YYYY-MM')" : "DATE_FORMAT(paid_date, '%Y-%m')";
         $paidByMonth = Payment::paid()
             ->where('paid_date', '>=', $rangeStart)
-            ->selectRaw("DATE_FORMAT(paid_date, '%Y-%m') as ym, SUM(amount) as total")
-            ->groupByRaw("DATE_FORMAT(paid_date, '%Y-%m')")
+            ->selectRaw("$paidYm as ym, SUM(amount) as total")
+            ->groupByRaw($paidYm)
             ->pluck('total', 'ym');
 
         // ── 1 query: كل المدفوعات غير المسددة مُجمَّعة بالشهر ──
@@ -2238,15 +2241,17 @@ class AdminController extends Controller
             ->pluck('total', 'ym');
 
         // ── 1 query: مصاريف مُجمَّعة بالشهر ──
+        $expenseYm = $isPgsql ? "TO_CHAR(expense_date, 'YYYY-MM')" : "DATE_FORMAT(expense_date, '%Y-%m')";
         $expensesByMonth = Expense::where('expense_date', '>=', $rangeStart)
-            ->selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as ym, SUM(amount) as total")
-            ->groupByRaw("DATE_FORMAT(expense_date, '%Y-%m')")
+            ->selectRaw("$expenseYm as ym, SUM(amount) as total")
+            ->groupByRaw($expenseYm)
             ->pluck('total', 'ym');
 
         // ── 1 query: رواتب مُجمَّعة بالشهر ──
+        $salaryYm = $isPgsql ? "TO_CHAR(payment_date, 'YYYY-MM')" : "DATE_FORMAT(payment_date, '%Y-%m')";
         $salariesByMonth = SalaryPayment::where('payment_date', '>=', $rangeStart)
-            ->selectRaw("DATE_FORMAT(payment_date, '%Y-%m') as ym, SUM(amount) as total")
-            ->groupByRaw("DATE_FORMAT(payment_date, '%Y-%m')")
+            ->selectRaw("$salaryYm as ym, SUM(amount) as total")
+            ->groupByRaw($salaryYm)
             ->pluck('total', 'ym');
 
         // ── 1 query: المتأخرات كلها ──

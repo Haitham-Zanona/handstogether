@@ -180,7 +180,8 @@ class Admission extends Model
 
     public static function generateApplicationNumber(): string
     {
-        $lastNumber = self::whereRaw("application_number ~ '^[0-9]{4}$'")
+        $regexOp = \DB::getDriverName() === 'pgsql' ? '~' : 'REGEXP';
+        $lastNumber = self::whereRaw("application_number $regexOp '^[0-9]{4}$'")
             ->max('application_number');
 
         $nextNumber = $lastNumber === null ? 0 : (intval($lastNumber) + 1);

@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Notifications\AcademyNotification;
 use App\Services\NotificationService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class SendDuePaymentNotifications extends Command
 {
@@ -51,7 +52,10 @@ class SendDuePaymentNotifications extends Command
         $expiredGrace = Payment::with(['student.user', 'student.parent'])
             ->whereNotNull('last_reminder_sent_at')
             ->where('status', '!=', 'paid')
-            ->whereRaw('DATE_ADD(DATE(last_reminder_sent_at), INTERVAL reminder_grace_days DAY) <= CURDATE()')
+            ->whereRaw(DB::getDriverName() === 'pgsql'
+                ? "(last_reminder_sent_at::date + (reminder_grace_days || ' days')::interval) <= CURRENT_DATE"
+                : 'DATE_ADD(DATE(last_reminder_sent_at), INTERVAL reminder_grace_days DAY) <= CURDATE()'
+            )
             ->get();
 
         $overdueCount = 0;
