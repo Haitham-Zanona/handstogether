@@ -117,9 +117,9 @@
 
                 <!-- Mobile menu button -->
                 <div class="md:hidden">
-                    <button type="button"
+                    <button type="button" aria-label="فتح القائمة"
                         class="p-2 text-gray-400 bg-gray-200 rounded-md mobile-menu-button hover:text-gray-500 hover:bg-gray-300">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="w-6 h-6" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
@@ -233,9 +233,9 @@
                 <div class="flex items-center">
                     <!-- Mobile menu button (يظهر دائماً على الموبايل) -->
                     <div class="md:hidden">
-                        <button type="button"
+                        <button type="button" aria-label="فتح القائمة"
                             class="p-2 text-gray-400 bg-gray-200 rounded-md mobile-menu-button hover:text-gray-500 hover:bg-gray-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="w-6 h-6" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
