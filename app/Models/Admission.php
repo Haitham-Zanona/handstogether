@@ -322,23 +322,11 @@ class Admission extends Model
 
     public function getDueAmount(): float
     {
-        if (! $this->study_start_date || ! $this->payment_due_from || ! $this->payment_due_to) {
+        if (! $this->monthly_fee || ! $this->num_payments) {
             return 0;
         }
 
-        $studyStart = Carbon::parse($this->study_start_date);
-        $dueFrom    = Carbon::parse($this->payment_due_from);
-        $dueTo      = Carbon::parse($this->payment_due_to);
-
-        $startDate = $studyStart->gt($dueFrom) ? $studyStart : $dueFrom;
-        $endDate   = now()->lt($dueTo) ? now() : $dueTo;
-
-        if ($startDate->gt($endDate)) {
-            return 0;
-        }
-
-        $months = $startDate->diffInMonths($endDate) + 1;
-        return (float) $this->monthly_fee * $months;
+        return (float) $this->monthly_fee * $this->num_payments;
     }
 
     public function canBeApproved(): bool

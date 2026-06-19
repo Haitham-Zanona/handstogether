@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
-class AdminController extends Controller
+class GroupController extends Controller
 {
     // ======================== الوظائف الموجودة (بدون تغيير) ========================
 

@@ -101,7 +101,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // إعادة تعيين حالة الطلب (للمشرفين فقط)
             Route::patch('{admission}/reset-status', 'resetStatus')
                 ->name('reset-status')
-                ->middleware('admission.permissions:reset_admission_status');
+                ->middleware('admission.permissions:reset_status');
 
             // طباعة بيانات طلب معين
             Route::get('{admission}/print', 'print')->name('print');
