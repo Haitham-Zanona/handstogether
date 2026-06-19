@@ -8,14 +8,7 @@
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Preconnect to reduce DNS time -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <!-- Arabic Font — display=swap, no render blocking -->
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-
-    <!-- Tailwind CSS (critical) -->
+    <!-- Tailwind CSS + Tajawal font (self-hosted via Vite) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @stack('styles')
