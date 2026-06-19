@@ -557,6 +557,7 @@ $pageDescription = 'إدارة ومراجعة طلبات انتساب الطلا
                                 <option value="صف ثامن">صف ثامن</option>
                                 <option value="صف تاسع">صف تاسع</option>
                                 <option value="صف عاشر">صف عاشر</option>
+                                <option value="صف حادي عشر">صف حادي عشر</option>
                             </select>
                             <div class="error-message">يرجى اختيار المرحلة الدراسية</div>
                         </div>

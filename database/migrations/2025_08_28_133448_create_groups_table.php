@@ -33,6 +33,7 @@ return new class extends Migration
             'الصف الثامن',
             'الصف التاسع',
             'الصف العاشر',
+            'الصف الحادي عشر',
         ];
 
         foreach ($gradeLevels as $grade) {

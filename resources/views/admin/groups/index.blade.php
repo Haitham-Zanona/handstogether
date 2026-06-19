@@ -190,6 +190,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
                         <option value="الصف الثامن">الصف الثامن</option>
                         <option value="الصف التاسع">الصف التاسع</option>
                         <option value="الصف العاشر">الصف العاشر</option>
+                        <option value="الصف الحادي عشر">الصف الحادي عشر</option>
                     </select>
                 </div>
 
@@ -894,6 +895,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
                             <option value="الصف الثامن">الصف الثامن</option>
                             <option value="الصف التاسع">الصف التاسع</option>
                             <option value="الصف العاشر">الصف العاشر</option>
+                            <option value="الصف الحادي عشر">الصف الحادي عشر</option>
                         </select>
                         <div x-show="errors.grade_level" class="mt-1 text-sm text-red-600" x-text="errors.grade_level">
                         </div>
@@ -987,6 +989,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
                             <option value="الصف الثامن">الصف الثامن</option>
                             <option value="الصف التاسع">الصف التاسع</option>
                             <option value="الصف العاشر">الصف العاشر</option>
+                            <option value="الصف الحادي عشر">الصف الحادي عشر</option>
                         </select>
                     </div>
 
@@ -1627,7 +1630,7 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
     searchTerm: '',
     gradeFilter: '',
     statusFilter: '',
-    sortBy: 'name',
+    sortBy: 'grade_level',
 
     // Modals
     showCreateModal: false,
@@ -1715,9 +1718,9 @@ $pageDescription = 'إضافة وإدارة مجموعات الطلاب والش
     case 'created_at':
     return new Date(b.created_at) - new Date(a.created_at);
     case 'grade_level':
-    return a.grade_level.localeCompare(b.grade_level);
+    return (a.sort_order ?? 99) - (b.sort_order ?? 99) || a.section_number - b.section_number;
     default:
-    return a.name.localeCompare(b.name);
+    return (a.sort_order ?? 99) - (b.sort_order ?? 99) || a.section_number - b.section_number;
     }
     });
     },

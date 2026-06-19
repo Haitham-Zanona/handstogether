@@ -183,6 +183,20 @@ class AdminController extends Controller
      */
     public function getGroupsData()
     {
+        $gradeOrder = [
+            'الصف الأول'      => 1,
+            'الصف الثاني'     => 2,
+            'الصف الثالث'     => 3,
+            'الصف الرابع'     => 4,
+            'الصف الخامس'     => 5,
+            'الصف السادس'     => 6,
+            'الصف السابع'     => 7,
+            'الصف الثامن'     => 8,
+            'الصف التاسع'     => 9,
+            'الصف العاشر'     => 10,
+            'الصف الحادي عشر' => 11,
+        ];
+
         try {
             // pre-load today's lecture counts per group in one query
             $todayCountsByGroup = Lecture::where('date', today()->toDateString())
@@ -193,11 +207,12 @@ class AdminController extends Controller
             $groups = Group::with(['teachers.user', 'subjects'])
                 ->withCount('students')
                 ->get()
-                ->map(function ($group) use ($todayCountsByGroup) {
+                ->map(function ($group) use ($todayCountsByGroup, $gradeOrder) {
                     return [
                         'id'                   => $group->id,
                         'name'                 => $group->name,
                         'grade_level'          => $group->grade_level,
+                        'sort_order'           => $gradeOrder[$group->grade_level] ?? 99,
                         'section'              => $group->section,
                         'section_number'       => $group->section_number,
                         'students_count'       => $group->students_count,
@@ -216,7 +231,9 @@ class AdminController extends Controller
                         'subjects_count'       => $group->subjects->count(),
                         'today_lectures'       => $todayCountsByGroup->get($group->id, 0),
                     ];
-                });
+                })
+                ->sortBy([['sort_order', 'asc'], ['section_number', 'asc']])
+                ->values();
 
             $stats = [
                 'total_groups'     => $groups->count(),
