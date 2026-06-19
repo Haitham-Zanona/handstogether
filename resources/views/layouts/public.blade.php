@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'الأكاديمية التعليمية' }}</title>
+    <meta name="description" content="{{ $metaDescription ?? 'أكاديمية تعليمية متخصصة تقدم برامج تعليمية متميزة للطلاب في جميع المراحل الدراسية من الصف الأول حتى الصف الحادي عشر.' }}">
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
